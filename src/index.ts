@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 import {
   CallToolRequestSchema,
   ErrorCode,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
   McpError,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@microsoft/microsoft-graph-client';
 import 'isomorphic-fetch';
@@ -16,8 +20,495 @@ import {
   SecurityGroupArgs,
   M365GroupArgs,
   ExchangeSettingsArgs,
+  SharePointSiteArgs,
+  SharePointListArgs,
 } from './types.js';
-import { m365CoreTools } from './tool-definitions.js';
+
+// Define Zod schemas for validation
+const sharePointSiteSchema = z.object({
+  action: z.enum(['get', 'create', 'update', 'delete', 'add_users', 'remove_users']),
+  siteId: z.string().optional(),
+  url: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  template: z.string().optional(),
+  owners: z.array(z.string()).optional(),
+  members: z.array(z.string()).optional(),
+  settings: z.object({
+    isPublic: z.boolean().optional(),
+    allowSharing: z.boolean().optional(),
+    storageQuota: z.number().optional(),
+  }).optional(),
+});
+
+const sharePointListSchema = z.object({
+  action: z.enum(['get', 'create', 'update', 'delete', 'add_items', 'get_items']),
+  siteId: z.string(),
+  listId: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  template: z.string().optional(),
+  columns: z.array(z.object({
+    name: z.string(),
+    type: z.string(),
+    required: z.boolean().optional(),
+    defaultValue: z.any().optional(),
+  })).optional(),
+  items: z.array(z.record(z.any())).optional(),
+});
+
+const distributionListSchema = z.object({
+  action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
+  listId: z.string().optional(),
+  displayName: z.string().optional(),
+  emailAddress: z.string().optional(),
+  members: z.array(z.string()).optional(),
+  settings: z.object({
+    hideFromGAL: z.boolean().optional(),
+    requireSenderAuthentication: z.boolean().optional(),
+    moderatedBy: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+const securityGroupSchema = z.object({
+  action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
+  groupId: z.string().optional(),
+  displayName: z.string().optional(),
+  description: z.string().optional(),
+  members: z.array(z.string()).optional(),
+  settings: z.object({
+    securityEnabled: z.boolean().optional(),
+    mailEnabled: z.boolean().optional(),
+  }).optional(),
+});
+
+const m365GroupSchema = z.object({
+  action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
+  groupId: z.string().optional(),
+  displayName: z.string().optional(),
+  description: z.string().optional(),
+  owners: z.array(z.string()).optional(),
+  members: z.array(z.string()).optional(),
+  settings: z.object({
+    visibility: z.enum(['Private', 'Public']).optional(),
+    allowExternalSenders: z.boolean().optional(),
+    autoSubscribeNewMembers: z.boolean().optional(),
+  }).optional(),
+});
+
+const exchangeSettingsSchema = z.object({
+  action: z.enum(['get', 'update']),
+  settingType: z.enum(['mailbox', 'transport', 'organization', 'retention']),
+  target: z.string().optional(),
+  settings: z.object({
+    automateProcessing: z.object({
+      autoReplyEnabled: z.boolean().optional(),
+      autoForwardEnabled: z.boolean().optional(),
+    }).optional(),
+    rules: z.array(z.object({
+      name: z.string(),
+      conditions: z.record(z.unknown()),
+      actions: z.record(z.unknown()),
+    })).optional(),
+    sharingPolicy: z.object({
+      domains: z.array(z.string()),
+      enabled: z.boolean(),
+    }).optional(),
+    retentionTags: z.array(z.object({
+      name: z.string(),
+      type: z.string(),
+      retentionDays: z.number(),
+    })).optional(),
+  }).optional(),
+});
+
+const userManagementSchema = z.object({
+  action: z.enum(['get', 'update']),
+  userId: z.string(),
+  settings: z.record(z.unknown()).optional(),
+});
+
+const offboardingSchema = z.object({
+  action: z.enum(['start', 'check', 'complete']),
+  userId: z.string(),
+  options: z.object({
+    revokeAccess: z.boolean().optional(),
+    retainMailbox: z.boolean().optional(),
+    convertToShared: z.boolean().optional(),
+    backupData: z.boolean().optional(),
+  }).optional(),
+});
+
+// Define tools with Zod schemas
+const m365CoreTools = [
+  {
+    name: "manage_sharepoint_sites",
+    description: "Manage SharePoint sites",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "create", "update", "delete", "add_users", "remove_users"],
+          description: "Action to perform"
+        },
+        siteId: {
+          type: "string",
+          description: "SharePoint site ID for existing site operations"
+        },
+        url: {
+          type: "string",
+          description: "URL for the SharePoint site"
+        },
+        title: {
+          type: "string",
+          description: "Title for the SharePoint site"
+        },
+        description: {
+          type: "string",
+          description: "Description of the SharePoint site"
+        },
+        template: {
+          type: "string",
+          description: "Template to use for site creation"
+        },
+        owners: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of owner email addresses"
+        },
+        members: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of member email addresses"
+        },
+        settings: {
+          type: "object",
+          properties: {
+            isPublic: { type: "boolean" },
+            allowSharing: { type: "boolean" },
+            storageQuota: { type: "number" }
+          }
+        }
+      },
+      required: ["action"]
+    }
+  },
+  {
+    name: "manage_sharepoint_lists",
+    description: "Manage SharePoint lists",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "create", "update", "delete", "add_items", "get_items"],
+          description: "Action to perform"
+        },
+        siteId: {
+          type: "string",
+          description: "SharePoint site ID"
+        },
+        listId: {
+          type: "string",
+          description: "SharePoint list ID for existing list operations"
+        },
+        title: {
+          type: "string",
+          description: "Title for the SharePoint list"
+        },
+        description: {
+          type: "string",
+          description: "Description of the SharePoint list"
+        },
+        template: {
+          type: "string",
+          description: "Template to use for list creation"
+        },
+        columns: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              type: { type: "string" },
+              required: { type: "boolean" },
+              defaultValue: { type: "any" }
+            }
+          },
+          description: "Columns for the SharePoint list"
+        },
+        items: {
+          type: "array",
+          items: { type: "object" },
+          description: "Items to add to the list"
+        }
+      },
+      required: ["action", "siteId"]
+    }
+  },
+  {
+    name: "manage_distribution_lists",
+    description: "Manage Microsoft 365 distribution lists",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "create", "update", "delete", "add_members", "remove_members"],
+          description: "Action to perform"
+        },
+        listId: {
+          type: "string",
+          description: "Distribution list ID for existing list operations"
+        },
+        displayName: {
+          type: "string",
+          description: "Display name for the distribution list"
+        },
+        emailAddress: {
+          type: "string",
+          description: "Email address for the distribution list"
+        },
+        members: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of member email addresses"
+        },
+        settings: {
+          type: "object",
+          properties: {
+            hideFromGAL: { type: "boolean" },
+            requireSenderAuthentication: { type: "boolean" },
+            moderatedBy: {
+              type: "array",
+              items: { type: "string" }
+            }
+          }
+        }
+      },
+      required: ["action"]
+    }
+  },
+  {
+    name: "manage_security_groups",
+    description: "Manage Microsoft 365 security groups",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "create", "update", "delete", "add_members", "remove_members"],
+          description: "Action to perform"
+        },
+        groupId: {
+          type: "string",
+          description: "Security group ID for existing group operations"
+        },
+        displayName: {
+          type: "string",
+          description: "Display name for the security group"
+        },
+        description: {
+          type: "string",
+          description: "Description of the security group"
+        },
+        members: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of member email addresses"
+        },
+        settings: {
+          type: "object",
+          properties: {
+            securityEnabled: { type: "boolean" },
+            mailEnabled: { type: "boolean" }
+          }
+        }
+      },
+      required: ["action"]
+    }
+  },
+  {
+    name: "manage_m365_groups",
+    description: "Manage Microsoft 365 groups",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "create", "update", "delete", "add_members", "remove_members"],
+          description: "Action to perform"
+        },
+        groupId: {
+          type: "string",
+          description: "M365 group ID for existing group operations"
+        },
+        displayName: {
+          type: "string",
+          description: "Display name for the M365 group"
+        },
+        description: {
+          type: "string",
+          description: "Description of the M365 group"
+        },
+        owners: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of owner email addresses"
+        },
+        members: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of member email addresses"
+        },
+        settings: {
+          type: "object",
+          properties: {
+            visibility: {
+              type: "string",
+              enum: ["Private", "Public"]
+            },
+            allowExternalSenders: { type: "boolean" },
+            autoSubscribeNewMembers: { type: "boolean" }
+          }
+        }
+      },
+      required: ["action"]
+    }
+  },
+  {
+    name: "manage_exchange_settings",
+    description: "Manage Exchange Online settings",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "update"],
+          description: "Action to perform"
+        },
+        settingType: {
+          type: "string",
+          enum: ["mailbox", "transport", "organization", "retention"],
+          description: "Type of Exchange settings to manage"
+        },
+        target: {
+          type: "string",
+          description: "User/Group ID for mailbox settings"
+        },
+        settings: {
+          type: "object",
+          properties: {
+            automateProcessing: {
+              type: "object",
+              properties: {
+                autoReplyEnabled: { type: "boolean" },
+                autoForwardEnabled: { type: "boolean" }
+              }
+            },
+            rules: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  conditions: { type: "object" },
+                  actions: { type: "object" }
+                }
+              }
+            },
+            sharingPolicy: {
+              type: "object",
+              properties: {
+                domains: {
+                  type: "array",
+                  items: { type: "string" }
+                },
+                enabled: { type: "boolean" }
+              }
+            },
+            retentionTags: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  type: { type: "string" },
+                  retentionDays: { type: "number" }
+                }
+              }
+            }
+          }
+        }
+      },
+      required: ["action", "settingType"]
+    }
+  },
+  {
+    name: "manage_user_settings",
+    description: "Manage Microsoft 365 user settings and configurations",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["get", "update"],
+          description: "Action to perform"
+        },
+        userId: {
+          type: "string",
+          description: "User ID or UPN"
+        },
+        settings: {
+          type: "object",
+          description: "User settings to update"
+        }
+      },
+      required: ["action", "userId"]
+    }
+  },
+  {
+    name: "manage_offboarding",
+    description: "Manage user offboarding processes",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["start", "check", "complete"],
+          description: "Action to perform"
+        },
+        userId: {
+          type: "string",
+          description: "User ID or UPN to offboard"
+        },
+        options: {
+          type: "object",
+          properties: {
+            revokeAccess: {
+              type: "boolean",
+              description: "Revoke all access immediately"
+            },
+            retainMailbox: {
+              type: "boolean",
+              description: "Retain user mailbox"
+            },
+            convertToShared: {
+              type: "boolean",
+              description: "Convert mailbox to shared"
+            },
+            backupData: {
+              type: "boolean",
+              description: "Backup user data"
+            }
+          }
+        }
+      },
+      required: ["action", "userId"]
+    }
+  }
+];
 
 // Environment validation
 const MS_TENANT_ID = process.env.MS_TENANT_ID ?? '';
@@ -41,8 +532,8 @@ class M365CoreServer {
       },
       {
         capabilities: {
-          tools: {},
           resources: {},
+          tools: {},
         },
       }
     );
@@ -102,6 +593,275 @@ class M365CoreServer {
       tools: m365CoreTools
     }));
 
+    // Resource handlers
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: [
+        {
+          uri: 'm365://users/current',
+          name: 'Current user information',
+          mimeType: 'application/json',
+          description: 'Information about the currently authenticated user',
+        },
+        {
+          uri: 'm365://tenant/info',
+          name: 'Tenant information',
+          mimeType: 'application/json',
+          description: 'Information about the Microsoft 365 tenant',
+        },
+        {
+          uri: 'm365://sharepoint/sites',
+          name: 'SharePoint sites',
+          mimeType: 'application/json',
+          description: 'List of SharePoint sites in the tenant',
+        },
+        {
+          uri: 'm365://sharepoint/admin/settings',
+          name: 'SharePoint admin settings',
+          mimeType: 'application/json',
+          description: 'SharePoint admin settings for the tenant',
+        },
+      ],
+    }));
+
+    // Resource template handlers
+    this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+      resourceTemplates: [
+        {
+          uriTemplate: 'm365://users/{userId}',
+          name: 'User information',
+          mimeType: 'application/json',
+          description: 'Information about a specific user',
+        },
+        {
+          uriTemplate: 'm365://groups/{groupId}',
+          name: 'Group information',
+          mimeType: 'application/json',
+          description: 'Information about a specific group',
+        },
+        {
+          uriTemplate: 'm365://sharepoint/sites/{siteId}',
+          name: 'SharePoint site information',
+          mimeType: 'application/json',
+          description: 'Information about a specific SharePoint site',
+        },
+        {
+          uriTemplate: 'm365://sharepoint/sites/{siteId}/lists',
+          name: 'SharePoint lists',
+          mimeType: 'application/json',
+          description: 'Lists in a specific SharePoint site',
+        },
+        {
+          uriTemplate: 'm365://sharepoint/sites/{siteId}/lists/{listId}',
+          name: 'SharePoint list information',
+          mimeType: 'application/json',
+          description: 'Information about a specific SharePoint list',
+        },
+        {
+          uriTemplate: 'm365://sharepoint/sites/{siteId}/lists/{listId}/items',
+          name: 'SharePoint list items',
+          mimeType: 'application/json',
+          description: 'Items in a specific SharePoint list',
+        },
+      ],
+    }));
+
+    // Read resource handler
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      try {
+        const uri = request.params.uri;
+        
+        // Static resources
+        if (uri === 'm365://users/current') {
+          const currentUser = await this.graphClient
+            .api('/me')
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(currentUser, null, 2),
+              },
+            ],
+          };
+        }
+        
+        if (uri === 'm365://tenant/info') {
+          const tenantInfo = await this.graphClient
+            .api('/organization')
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(tenantInfo, null, 2),
+              },
+            ],
+          };
+        }
+        
+        if (uri === 'm365://sharepoint/sites') {
+          const sites = await this.graphClient
+            .api('/sites?search=*')
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(sites, null, 2),
+              },
+            ],
+          };
+        }
+        
+        if (uri === 'm365://sharepoint/admin/settings') {
+          const settings = await this.graphClient
+            .api('/admin/sharepoint/settings')
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(settings, null, 2),
+              },
+            ],
+          };
+        }
+        
+        // Dynamic resources
+        const userMatch = uri.match(/^m365:\/\/users\/([^/]+)$/);
+        if (userMatch) {
+          const userId = decodeURIComponent(userMatch[1]);
+          const user = await this.graphClient
+            .api(`/users/${userId}`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(user, null, 2),
+              },
+            ],
+          };
+        }
+        
+        const groupMatch = uri.match(/^m365:\/\/groups\/([^/]+)$/);
+        if (groupMatch) {
+          const groupId = decodeURIComponent(groupMatch[1]);
+          const group = await this.graphClient
+            .api(`/groups/${groupId}`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(group, null, 2),
+              },
+            ],
+          };
+        }
+        
+        // SharePoint site resources
+        const siteMatch = uri.match(/^m365:\/\/sharepoint\/sites\/([^/]+)$/);
+        if (siteMatch) {
+          const siteId = decodeURIComponent(siteMatch[1]);
+          const site = await this.graphClient
+            .api(`/sites/${siteId}`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(site, null, 2),
+              },
+            ],
+          };
+        }
+        
+        // SharePoint lists resources
+        const listsMatch = uri.match(/^m365:\/\/sharepoint\/sites\/([^/]+)\/lists$/);
+        if (listsMatch) {
+          const siteId = decodeURIComponent(listsMatch[1]);
+          const lists = await this.graphClient
+            .api(`/sites/${siteId}/lists`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(lists, null, 2),
+              },
+            ],
+          };
+        }
+        
+        // SharePoint list resource
+        const listMatch = uri.match(/^m365:\/\/sharepoint\/sites\/([^/]+)\/lists\/([^/]+)$/);
+        if (listMatch) {
+          const siteId = decodeURIComponent(listMatch[1]);
+          const listId = decodeURIComponent(listMatch[2]);
+          const list = await this.graphClient
+            .api(`/sites/${siteId}/lists/${listId}`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(list, null, 2),
+              },
+            ],
+          };
+        }
+        
+        // SharePoint list items resource
+        const listItemsMatch = uri.match(/^m365:\/\/sharepoint\/sites\/([^/]+)\/lists\/([^/]+)\/items$/);
+        if (listItemsMatch) {
+          const siteId = decodeURIComponent(listItemsMatch[1]);
+          const listId = decodeURIComponent(listItemsMatch[2]);
+          const items = await this.graphClient
+            .api(`/sites/${siteId}/lists/${listId}/items?expand=fields`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify(items, null, 2),
+              },
+            ],
+          };
+        }
+        
+        throw new McpError(ErrorCode.InvalidRequest, `Resource not found: ${uri}`);
+      } catch (error) {
+        if (error instanceof McpError) {
+          throw error;
+        }
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    });
+
     // Handle tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
@@ -113,33 +873,127 @@ class M365CoreServer {
 
         switch (name) {
           case 'manage_distribution_lists': {
-            const dlArgs = this.validateDistributionListArgs(args);
-            return await this.handleDistributionList(dlArgs);
+            try {
+              const dlArgs = distributionListSchema.parse(args);
+              return await this.handleDistributionList(dlArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid distribution list parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
           }
 
           case 'manage_security_groups': {
-            const sgArgs = this.validateSecurityGroupArgs(args);
-            return await this.handleSecurityGroup(sgArgs);
+            try {
+              const sgArgs = securityGroupSchema.parse(args);
+              return await this.handleSecurityGroup(sgArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid security group parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
           }
 
           case 'manage_m365_groups': {
-            const m365Args = this.validateM365GroupArgs(args);
-            return await this.handleM365Group(m365Args);
+            try {
+              const m365Args = m365GroupSchema.parse(args);
+              return await this.handleM365Group(m365Args);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid M365 group parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
           }
 
           case 'manage_exchange_settings': {
-            const exchangeArgs = this.validateExchangeSettingsArgs(args);
-            return await this.handleExchangeSettings(exchangeArgs);
+            try {
+              const exchangeArgs = exchangeSettingsSchema.parse(args);
+              return await this.handleExchangeSettings(exchangeArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid Exchange settings parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
           }
 
           case 'manage_user_settings': {
-            const userArgs = this.validateUserManagementArgs(args);
-            return await this.handleUserSettings(userArgs);
+            try {
+              const userArgs = userManagementSchema.parse(args);
+              return await this.handleUserSettings({
+                action: userArgs.action,
+                userPrincipalName: userArgs.userId,
+                settings: userArgs.settings
+              });
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid user management parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
           }
 
           case 'manage_offboarding': {
-            const offboardingArgs = this.validateOffboardingArgs(args);
-            return await this.handleOffboarding(offboardingArgs);
+            try {
+              const offboardingArgs = offboardingSchema.parse(args);
+              return await this.handleOffboarding(offboardingArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid offboarding parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
+          }
+          
+          case 'manage_sharepoint_sites': {
+            try {
+              const siteArgs = sharePointSiteSchema.parse(args);
+              return await this.handleSharePointSite(siteArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid SharePoint site parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
+          }
+          
+          case 'manage_sharepoint_lists': {
+            try {
+              const listArgs = sharePointListSchema.parse(args);
+              return await this.handleSharePointList(listArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid SharePoint list parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
           }
         }
 
@@ -538,6 +1392,202 @@ class M365CoreServer {
             .delete();
         }
         return { content: [{ type: 'text', text: 'Offboarding process completed successfully' }] };
+      }
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+  }
+
+  private async handleSharePointSite(args: SharePointSiteArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    switch (args.action) {
+      case 'get': {
+        const site = await this.graphClient
+          .api(`/sites/${args.siteId}`)
+          .get();
+        return { content: [{ type: 'text', text: JSON.stringify(site, null, 2) }] };
+      }
+      case 'create': {
+        // Create a new SharePoint site
+        const site = await this.graphClient
+          .api('/sites/add')
+          .post({
+            displayName: args.title,
+            description: args.description,
+            webTemplate: args.template || 'STS#0', // Team site template
+            url: args.url,
+          });
+        
+        // Apply settings if provided
+        if (args.settings) {
+          await this.graphClient
+            .api(`/sites/${site.id}/settings`)
+            .patch({
+              isPublic: args.settings.isPublic,
+              sharingCapability: args.settings.allowSharing ? 'ExternalUserSharingOnly' : 'Disabled',
+              storageQuota: args.settings.storageQuota,
+            });
+        }
+        
+        // Add owners if provided
+        if (args.owners?.length) {
+          for (const owner of args.owners) {
+            await this.graphClient
+              .api(`/sites/${site.id}/owners/$ref`)
+              .post({
+                '@odata.id': `https://graph.microsoft.com/v1.0/users/${owner}`,
+              });
+          }
+        }
+        
+        // Add members if provided
+        if (args.members?.length) {
+          for (const member of args.members) {
+            await this.graphClient
+              .api(`/sites/${site.id}/members/$ref`)
+              .post({
+                '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`,
+              });
+          }
+        }
+        
+        return { content: [{ type: 'text', text: JSON.stringify(site, null, 2) }] };
+      }
+      case 'update': {
+        // Update site properties
+        await this.graphClient
+          .api(`/sites/${args.siteId}`)
+          .patch({
+            displayName: args.title,
+            description: args.description,
+          });
+        
+        // Update settings if provided
+        if (args.settings) {
+          await this.graphClient
+            .api(`/sites/${args.siteId}/settings`)
+            .patch({
+              isPublic: args.settings.isPublic,
+              sharingCapability: args.settings.allowSharing ? 'ExternalUserSharingOnly' : 'Disabled',
+              storageQuota: args.settings.storageQuota,
+            });
+        }
+        
+        return { content: [{ type: 'text', text: 'SharePoint site updated successfully' }] };
+      }
+      case 'delete': {
+        await this.graphClient
+          .api(`/sites/${args.siteId}`)
+          .delete();
+        return { content: [{ type: 'text', text: 'SharePoint site deleted successfully' }] };
+      }
+      case 'add_users': {
+        if (!args.members?.length) {
+          throw new McpError(ErrorCode.InvalidParams, 'No users specified to add');
+        }
+        
+        for (const member of args.members) {
+          await this.graphClient
+            .api(`/sites/${args.siteId}/members/$ref`)
+            .post({
+              '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`,
+            });
+        }
+        
+        return { content: [{ type: 'text', text: 'Users added to SharePoint site successfully' }] };
+      }
+      case 'remove_users': {
+        if (!args.members?.length) {
+          throw new McpError(ErrorCode.InvalidParams, 'No users specified to remove');
+        }
+        
+        for (const member of args.members) {
+          await this.graphClient
+            .api(`/sites/${args.siteId}/members/${member}/$ref`)
+            .delete();
+        }
+        
+        return { content: [{ type: 'text', text: 'Users removed from SharePoint site successfully' }] };
+      }
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+  }
+
+  private async handleSharePointList(args: SharePointListArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    switch (args.action) {
+      case 'get': {
+        const list = await this.graphClient
+          .api(`/sites/${args.siteId}/lists/${args.listId}`)
+          .get();
+        return { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] };
+      }
+      case 'create': {
+        // Create a new list
+        const list = await this.graphClient
+          .api(`/sites/${args.siteId}/lists`)
+          .post({
+            displayName: args.title,
+            description: args.description,
+            template: args.template || 'genericList',
+          });
+        
+        // Add columns if provided
+        if (args.columns?.length) {
+          for (const column of args.columns) {
+            await this.graphClient
+              .api(`/sites/${args.siteId}/lists/${list.id}/columns`)
+              .post({
+                name: column.name,
+                columnType: column.type,
+                required: column.required || false,
+                defaultValue: column.defaultValue,
+              });
+          }
+        }
+        
+        return { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] };
+      }
+      case 'update': {
+        await this.graphClient
+          .api(`/sites/${args.siteId}/lists/${args.listId}`)
+          .patch({
+            displayName: args.title,
+            description: args.description,
+          });
+        
+        return { content: [{ type: 'text', text: 'SharePoint list updated successfully' }] };
+      }
+      case 'delete': {
+        await this.graphClient
+          .api(`/sites/${args.siteId}/lists/${args.listId}`)
+          .delete();
+        
+        return { content: [{ type: 'text', text: 'SharePoint list deleted successfully' }] };
+      }
+      case 'add_items': {
+        if (!args.items?.length) {
+          throw new McpError(ErrorCode.InvalidParams, 'No items specified to add');
+        }
+        
+        const results = [];
+        for (const item of args.items) {
+          const result = await this.graphClient
+            .api(`/sites/${args.siteId}/lists/${args.listId}/items`)
+            .post({
+              fields: item,
+            });
+          
+          results.push(result);
+        }
+        
+        return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+      }
+      case 'get_items': {
+        const items = await this.graphClient
+          .api(`/sites/${args.siteId}/lists/${args.listId}/items?expand=fields`)
+          .get();
+        
+        return { content: [{ type: 'text', text: JSON.stringify(items, null, 2) }] };
       }
       default:
         throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);

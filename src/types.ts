@@ -35,8 +35,8 @@ export interface SecurityGroupArgs {
   description?: string;
   members?: string[];
   settings?: {
-    securityEnabled: boolean;
-    mailEnabled: boolean;
+    securityEnabled?: boolean;
+    mailEnabled?: boolean;
   };
 }
 
@@ -48,10 +48,42 @@ export interface M365GroupArgs {
   owners?: string[];
   members?: string[];
   settings?: {
-    visibility: 'Private' | 'Public';
-    allowExternalSenders: boolean;
-    autoSubscribeNewMembers: boolean;
+    visibility?: 'Private' | 'Public';
+    allowExternalSenders?: boolean;
+    autoSubscribeNewMembers?: boolean;
   };
+}
+
+export interface SharePointSiteArgs {
+  action: 'get' | 'create' | 'update' | 'delete' | 'add_users' | 'remove_users';
+  siteId?: string;
+  url?: string;
+  title?: string;
+  description?: string;
+  template?: string;
+  owners?: string[];
+  members?: string[];
+  settings?: {
+    isPublic?: boolean;
+    allowSharing?: boolean;
+    storageQuota?: number;
+  };
+}
+
+export interface SharePointListArgs {
+  action: 'get' | 'create' | 'update' | 'delete' | 'add_items' | 'get_items';
+  siteId: string;
+  listId?: string;
+  title?: string;
+  description?: string;
+  template?: string;
+  columns?: {
+    name: string;
+    type: string;
+    required?: boolean;
+    defaultValue?: any;
+  }[];
+  items?: Record<string, any>[];
 }
 
 export interface ExchangeSettingsArgs {
