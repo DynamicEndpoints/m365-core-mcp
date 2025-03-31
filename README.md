@@ -1,5 +1,7 @@
 # Microsoft 365 Core MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@DynamicEndpoints/m365-core-mcp)](https://smithery.ai/server/@DynamicEndpoints/m365-core-mcp)
+
 An MCP server that provides tools for managing Microsoft 365 core services including:
 - Distribution Lists
 - Security Groups
@@ -56,6 +58,15 @@ An MCP server that provides tools for managing Microsoft 365 core services inclu
 
 ## Setup
 
+### Installing via Smithery
+
+To install Microsoft 365 Core Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@DynamicEndpoints/m365-core-mcp):
+
+```bash
+npx -y @smithery/cli install @DynamicEndpoints/m365-core-mcp --client claude
+```
+
+### Installing Manually
 1. Clone the repository
 2. Install dependencies:
    ```bash
