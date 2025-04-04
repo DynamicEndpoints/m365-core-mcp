@@ -266,8 +266,8 @@ export const m365CoreTools = [
     }
   },
   {
-    name: "call_microsoft_api",
-    description: "Call a specific Microsoft Graph or Azure Resource Management API endpoint.",
+    name: "Dynamicendpoint_automation_assistant",
+    description: "Acts as a versatile assistant to call any Microsoft Graph or Azure Resource Management API endpoint. Use this for managing users, groups, applications, devices, policies (Conditional Access, Intune Configuration/Compliance), security alerts, audit logs, SharePoint, Exchange, and more.",
     inputSchema: {
       type: "object",
       properties: {
