@@ -364,7 +364,7 @@ export const m365CoreTools = [
         },
         template: {
           type: "string",
-          description: "Template to use for site creation"
+          description: "Web template ID for site creation. Examples: 'STS#3' (Modern Team Site), 'SITEPAGEPUBLISHING#0' (Communication Site), 'STS#0' (Classic Team Site - default if omitted)."
         },
         owners: {
           type: "array",
