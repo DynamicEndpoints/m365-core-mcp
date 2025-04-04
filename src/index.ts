@@ -49,6 +49,7 @@ import {
 } from './tool-definitions.js';
 import { z } from 'zod'; // Keep Zod import for error handling
 
+// Force reload test comment
 // Environment validation
 const MS_TENANT_ID = process.env.MS_TENANT_ID ?? '';
 const MS_CLIENT_ID = process.env.MS_CLIENT_ID ?? '';
@@ -285,7 +286,7 @@ class M365CoreServer {
                 uri,
                 mimeType: 'application/json',
                 text: JSON.stringify(sites, null, 2),
-              },
+              }, // Added missing closing brace here
             ],
           };
         }
@@ -627,7 +628,7 @@ class M365CoreServer {
              }
            }
 
-           case 'call_microsoft_api': {
+           case 'Dynamicendpoint_automation_assistant': {
              try {
                const apiArgs = callMicrosoftApiSchema.parse(args);
                return await this.handleCallMicrosoftApi(apiArgs);
