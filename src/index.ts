@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
 import {
   CallToolRequestSchema,
   ErrorCode,
@@ -22,493 +21,33 @@ import {
   ExchangeSettingsArgs,
   SharePointSiteArgs,
   SharePointListArgs,
+  AzureAdRoleArgs,
+  AzureAdAppArgs,
+  AzureAdDeviceArgs,
+  AzureAdSpArgs,
+  CallMicrosoftApiArgs,
+  AuditLogArgs, // Import new type
+  AlertArgs, // Import new type
 } from './types.js';
-
-// Define Zod schemas for validation
-const sharePointSiteSchema = z.object({
-  action: z.enum(['get', 'create', 'update', 'delete', 'add_users', 'remove_users']),
-  siteId: z.string().optional(),
-  url: z.string().optional(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  template: z.string().optional(),
-  owners: z.array(z.string()).optional(),
-  members: z.array(z.string()).optional(),
-  settings: z.object({
-    isPublic: z.boolean().optional(),
-    allowSharing: z.boolean().optional(),
-    storageQuota: z.number().optional(),
-  }).optional(),
-});
-
-const sharePointListSchema = z.object({
-  action: z.enum(['get', 'create', 'update', 'delete', 'add_items', 'get_items']),
-  siteId: z.string(),
-  listId: z.string().optional(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  template: z.string().optional(),
-  columns: z.array(z.object({
-    name: z.string(),
-    type: z.string(),
-    required: z.boolean().optional(),
-    defaultValue: z.any().optional(),
-  })).optional(),
-  items: z.array(z.record(z.any())).optional(),
-});
-
-const distributionListSchema = z.object({
-  action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
-  listId: z.string().optional(),
-  displayName: z.string().optional(),
-  emailAddress: z.string().optional(),
-  members: z.array(z.string()).optional(),
-  settings: z.object({
-    hideFromGAL: z.boolean().optional(),
-    requireSenderAuthentication: z.boolean().optional(),
-    moderatedBy: z.array(z.string()).optional(),
-  }).optional(),
-});
-
-const securityGroupSchema = z.object({
-  action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
-  groupId: z.string().optional(),
-  displayName: z.string().optional(),
-  description: z.string().optional(),
-  members: z.array(z.string()).optional(),
-  settings: z.object({
-    securityEnabled: z.boolean().optional(),
-    mailEnabled: z.boolean().optional(),
-  }).optional(),
-});
-
-const m365GroupSchema = z.object({
-  action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
-  groupId: z.string().optional(),
-  displayName: z.string().optional(),
-  description: z.string().optional(),
-  owners: z.array(z.string()).optional(),
-  members: z.array(z.string()).optional(),
-  settings: z.object({
-    visibility: z.enum(['Private', 'Public']).optional(),
-    allowExternalSenders: z.boolean().optional(),
-    autoSubscribeNewMembers: z.boolean().optional(),
-  }).optional(),
-});
-
-const exchangeSettingsSchema = z.object({
-  action: z.enum(['get', 'update']),
-  settingType: z.enum(['mailbox', 'transport', 'organization', 'retention']),
-  target: z.string().optional(),
-  settings: z.object({
-    automateProcessing: z.object({
-      autoReplyEnabled: z.boolean().optional(),
-      autoForwardEnabled: z.boolean().optional(),
-    }).optional(),
-    rules: z.array(z.object({
-      name: z.string(),
-      conditions: z.record(z.unknown()),
-      actions: z.record(z.unknown()),
-    })).optional(),
-    sharingPolicy: z.object({
-      domains: z.array(z.string()),
-      enabled: z.boolean(),
-    }).optional(),
-    retentionTags: z.array(z.object({
-      name: z.string(),
-      type: z.string(),
-      retentionDays: z.number(),
-    })).optional(),
-  }).optional(),
-});
-
-const userManagementSchema = z.object({
-  action: z.enum(['get', 'update']),
-  userId: z.string(),
-  settings: z.record(z.unknown()).optional(),
-});
-
-const offboardingSchema = z.object({
-  action: z.enum(['start', 'check', 'complete']),
-  userId: z.string(),
-  options: z.object({
-    revokeAccess: z.boolean().optional(),
-    retainMailbox: z.boolean().optional(),
-    convertToShared: z.boolean().optional(),
-    backupData: z.boolean().optional(),
-  }).optional(),
-});
-
-// Define tools with Zod schemas
-const m365CoreTools = [
-  {
-    name: "manage_sharepoint_sites",
-    description: "Manage SharePoint sites",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "create", "update", "delete", "add_users", "remove_users"],
-          description: "Action to perform"
-        },
-        siteId: {
-          type: "string",
-          description: "SharePoint site ID for existing site operations"
-        },
-        url: {
-          type: "string",
-          description: "URL for the SharePoint site"
-        },
-        title: {
-          type: "string",
-          description: "Title for the SharePoint site"
-        },
-        description: {
-          type: "string",
-          description: "Description of the SharePoint site"
-        },
-        template: {
-          type: "string",
-          description: "Template to use for site creation"
-        },
-        owners: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of owner email addresses"
-        },
-        members: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of member email addresses"
-        },
-        settings: {
-          type: "object",
-          properties: {
-            isPublic: { type: "boolean" },
-            allowSharing: { type: "boolean" },
-            storageQuota: { type: "number" }
-          }
-        }
-      },
-      required: ["action"]
-    }
-  },
-  {
-    name: "manage_sharepoint_lists",
-    description: "Manage SharePoint lists",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "create", "update", "delete", "add_items", "get_items"],
-          description: "Action to perform"
-        },
-        siteId: {
-          type: "string",
-          description: "SharePoint site ID"
-        },
-        listId: {
-          type: "string",
-          description: "SharePoint list ID for existing list operations"
-        },
-        title: {
-          type: "string",
-          description: "Title for the SharePoint list"
-        },
-        description: {
-          type: "string",
-          description: "Description of the SharePoint list"
-        },
-        template: {
-          type: "string",
-          description: "Template to use for list creation"
-        },
-        columns: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              type: { type: "string" },
-              required: { type: "boolean" },
-              defaultValue: { type: "any" }
-            }
-          },
-          description: "Columns for the SharePoint list"
-        },
-        items: {
-          type: "array",
-          items: { type: "object" },
-          description: "Items to add to the list"
-        }
-      },
-      required: ["action", "siteId"]
-    }
-  },
-  {
-    name: "manage_distribution_lists",
-    description: "Manage Microsoft 365 distribution lists",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "create", "update", "delete", "add_members", "remove_members"],
-          description: "Action to perform"
-        },
-        listId: {
-          type: "string",
-          description: "Distribution list ID for existing list operations"
-        },
-        displayName: {
-          type: "string",
-          description: "Display name for the distribution list"
-        },
-        emailAddress: {
-          type: "string",
-          description: "Email address for the distribution list"
-        },
-        members: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of member email addresses"
-        },
-        settings: {
-          type: "object",
-          properties: {
-            hideFromGAL: { type: "boolean" },
-            requireSenderAuthentication: { type: "boolean" },
-            moderatedBy: {
-              type: "array",
-              items: { type: "string" }
-            }
-          }
-        }
-      },
-      required: ["action"]
-    }
-  },
-  {
-    name: "manage_security_groups",
-    description: "Manage Microsoft 365 security groups",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "create", "update", "delete", "add_members", "remove_members"],
-          description: "Action to perform"
-        },
-        groupId: {
-          type: "string",
-          description: "Security group ID for existing group operations"
-        },
-        displayName: {
-          type: "string",
-          description: "Display name for the security group"
-        },
-        description: {
-          type: "string",
-          description: "Description of the security group"
-        },
-        members: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of member email addresses"
-        },
-        settings: {
-          type: "object",
-          properties: {
-            securityEnabled: { type: "boolean" },
-            mailEnabled: { type: "boolean" }
-          }
-        }
-      },
-      required: ["action"]
-    }
-  },
-  {
-    name: "manage_m365_groups",
-    description: "Manage Microsoft 365 groups",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "create", "update", "delete", "add_members", "remove_members"],
-          description: "Action to perform"
-        },
-        groupId: {
-          type: "string",
-          description: "M365 group ID for existing group operations"
-        },
-        displayName: {
-          type: "string",
-          description: "Display name for the M365 group"
-        },
-        description: {
-          type: "string",
-          description: "Description of the M365 group"
-        },
-        owners: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of owner email addresses"
-        },
-        members: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of member email addresses"
-        },
-        settings: {
-          type: "object",
-          properties: {
-            visibility: {
-              type: "string",
-              enum: ["Private", "Public"]
-            },
-            allowExternalSenders: { type: "boolean" },
-            autoSubscribeNewMembers: { type: "boolean" }
-          }
-        }
-      },
-      required: ["action"]
-    }
-  },
-  {
-    name: "manage_exchange_settings",
-    description: "Manage Exchange Online settings",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "update"],
-          description: "Action to perform"
-        },
-        settingType: {
-          type: "string",
-          enum: ["mailbox", "transport", "organization", "retention"],
-          description: "Type of Exchange settings to manage"
-        },
-        target: {
-          type: "string",
-          description: "User/Group ID for mailbox settings"
-        },
-        settings: {
-          type: "object",
-          properties: {
-            automateProcessing: {
-              type: "object",
-              properties: {
-                autoReplyEnabled: { type: "boolean" },
-                autoForwardEnabled: { type: "boolean" }
-              }
-            },
-            rules: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  conditions: { type: "object" },
-                  actions: { type: "object" }
-                }
-              }
-            },
-            sharingPolicy: {
-              type: "object",
-              properties: {
-                domains: {
-                  type: "array",
-                  items: { type: "string" }
-                },
-                enabled: { type: "boolean" }
-              }
-            },
-            retentionTags: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  type: { type: "string" },
-                  retentionDays: { type: "number" }
-                }
-              }
-            }
-          }
-        }
-      },
-      required: ["action", "settingType"]
-    }
-  },
-  {
-    name: "manage_user_settings",
-    description: "Manage Microsoft 365 user settings and configurations",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["get", "update"],
-          description: "Action to perform"
-        },
-        userId: {
-          type: "string",
-          description: "User ID or UPN"
-        },
-        settings: {
-          type: "object",
-          description: "User settings to update"
-        }
-      },
-      required: ["action", "userId"]
-    }
-  },
-  {
-    name: "manage_offboarding",
-    description: "Manage user offboarding processes",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["start", "check", "complete"],
-          description: "Action to perform"
-        },
-        userId: {
-          type: "string",
-          description: "User ID or UPN to offboard"
-        },
-        options: {
-          type: "object",
-          properties: {
-            revokeAccess: {
-              type: "boolean",
-              description: "Revoke all access immediately"
-            },
-            retainMailbox: {
-              type: "boolean",
-              description: "Retain user mailbox"
-            },
-            convertToShared: {
-              type: "boolean",
-              description: "Convert mailbox to shared"
-            },
-            backupData: {
-              type: "boolean",
-              description: "Backup user data"
-            }
-          }
-        }
-      },
-      required: ["action", "userId"]
-    }
-  }
-];
+import {
+  m365CoreTools,
+  sharePointSiteSchema,
+  sharePointListSchema,
+  distributionListSchema,
+  securityGroupSchema,
+  m365GroupSchema,
+  exchangeSettingsSchema,
+  userManagementSchema,
+  offboardingSchema,
+  azureAdRoleSchema,
+  azureAdAppSchema,
+  azureAdDeviceSchema,
+  azureAdSpSchema,
+  callMicrosoftApiSchema,
+  auditLogSchema, // Import new schema
+  alertSchema, // Import new schema
+} from './tool-definitions.js';
+import { z } from 'zod'; // Keep Zod import for error handling
 
 // Environment validation
 const MS_TENANT_ID = process.env.MS_TENANT_ID ?? '';
@@ -519,10 +58,24 @@ if (!MS_TENANT_ID || !MS_CLIENT_ID || !MS_CLIENT_SECRET) {
   throw new Error('Required environment variables (MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET) are missing');
 }
 
+// Define API configurations
+const apiConfigs = {
+  graph: {
+    scope: "https://graph.microsoft.com/.default",
+    baseUrl: "https://graph.microsoft.com/v1.0",
+  },
+  azure: {
+    scope: "https://management.azure.com/.default",
+    baseUrl: "https://management.azure.com",
+  }
+};
+
 class M365CoreServer {
   private server: Server;
   private graphClient: Client;
-  private token: string | null = null;
+  // Cache for tokens based on scope
+  private tokenCache: Map<string, { token: string; expiresOn: number }> = new Map();
+
 
   constructor() {
     this.server = new Server(
@@ -538,13 +91,12 @@ class M365CoreServer {
       }
     );
 
+    // Initialize Graph client with default scope
     this.graphClient = Client.init({
       authProvider: async (callback) => {
         try {
-          if (!this.token) {
-            this.token = await this.getAccessToken();
-          }
-          callback(null, this.token);
+          const token = await this.getAccessToken(apiConfigs.graph.scope); // Use default Graph scope
+          callback(null, token);
         } catch (error) {
           callback(error as Error, null);
         }
@@ -561,10 +113,18 @@ class M365CoreServer {
     });
   }
 
-  private async getAccessToken(): Promise<string> {
-    const tokenEndpoint = `https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/token`;
-    const scope = 'https://graph.microsoft.com/.default';
+  // Modified to accept scope and use cache
+  private async getAccessToken(scope: string = apiConfigs.graph.scope): Promise<string> {
+    const cached = this.tokenCache.get(scope);
+    const now = Date.now();
 
+    // Return cached token if valid (expires in > 60 seconds)
+    if (cached && cached.expiresOn > now + 60 * 1000) {
+      return cached.token;
+    }
+
+    // Fetch new token
+    const tokenEndpoint = `https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/token`;
     const params = new URLSearchParams();
     params.append('client_id', MS_CLIENT_ID);
     params.append('client_secret', MS_CLIENT_SECRET);
@@ -580,10 +140,21 @@ class M365CoreServer {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to get access token');
+       const errorData = await response.text();
+       console.error("Token acquisition error:", response.status, errorData);
+      throw new Error(`Failed to get access token for scope ${scope}. Status: ${response.status} ${response.statusText}. Details: ${errorData}`);
     }
 
     const data = await response.json();
+    if (!data.access_token || !data.expires_in) {
+       console.error("Invalid token response:", data);
+       throw new Error(`Invalid token response received for scope ${scope}`);
+    }
+
+    // Cache the new token with expiration time (expires_in is in seconds)
+    const expiresOn = now + data.expires_in * 1000;
+    this.tokenCache.set(scope, { token: data.access_token, expiresOn });
+
     return data.access_token;
   }
 
@@ -995,6 +566,111 @@ class M365CoreServer {
               throw error;
             }
           }
+
+          case 'manage_azure_ad_roles': {
+            try {
+              const roleArgs = azureAdRoleSchema.parse(args);
+              return await this.handleAzureAdRoles(roleArgs);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  `Invalid Azure AD role parameters: ${error.errors.map(e => e.message).join(', ')}`
+                );
+              }
+              throw error;
+            }
+          }
+
+          case 'manage_azure_ad_apps': {
+             try {
+               const appArgs = azureAdAppSchema.parse(args);
+               return await this.handleAzureAdApps(appArgs);
+             } catch (error) {
+               if (error instanceof z.ZodError) {
+                 throw new McpError(
+                   ErrorCode.InvalidParams,
+                   `Invalid Azure AD app parameters: ${error.errors.map(e => e.message).join(', ')}`
+                 );
+               }
+               throw error;
+             }
+           }
+
+           case 'manage_azure_ad_devices': {
+             try {
+               const deviceArgs = azureAdDeviceSchema.parse(args);
+               return await this.handleAzureAdDevices(deviceArgs);
+             } catch (error) {
+               if (error instanceof z.ZodError) {
+                 throw new McpError(
+                   ErrorCode.InvalidParams,
+                   `Invalid Azure AD device parameters: ${error.errors.map(e => e.message).join(', ')}`
+                 );
+               }
+               throw error;
+             }
+           }
+
+           case 'manage_service_principals': {
+             try {
+               const spArgs = azureAdSpSchema.parse(args);
+               return await this.handleServicePrincipals(spArgs);
+             } catch (error) {
+               if (error instanceof z.ZodError) {
+                 throw new McpError(
+                   ErrorCode.InvalidParams,
+                   `Invalid Service Principal parameters: ${error.errors.map(e => e.message).join(', ')}`
+                 );
+               }
+               throw error;
+             }
+           }
+
+           case 'call_microsoft_api': {
+             try {
+               const apiArgs = callMicrosoftApiSchema.parse(args);
+               return await this.handleCallMicrosoftApi(apiArgs);
+             } catch (error) {
+               if (error instanceof z.ZodError) {
+                 throw new McpError(
+                   ErrorCode.InvalidParams,
+                   `Invalid API call parameters: ${error.errors.map(e => e.message).join(', ')}`
+                 );
+               }
+               throw error;
+             }
+           }
+
+           case 'search_audit_log': {
+             try {
+               const auditArgs = auditLogSchema.parse(args);
+               return await this.handleSearchAuditLog(auditArgs);
+             } catch (error) {
+               if (error instanceof z.ZodError) {
+                 throw new McpError(
+                   ErrorCode.InvalidParams,
+                   `Invalid Audit Log parameters: ${error.errors.map(e => e.message).join(', ')}`
+                 );
+               }
+               throw error;
+             }
+           }
+
+           case 'manage_alerts': {
+             try {
+               const alertArgs = alertSchema.parse(args);
+               return await this.handleManageAlerts(alertArgs);
+             } catch (error) {
+               if (error instanceof z.ZodError) {
+                 throw new McpError(
+                   ErrorCode.InvalidParams,
+                   `Invalid Alert parameters: ${error.errors.map(e => e.message).join(', ')}`
+                 );
+               }
+               throw error;
+             }
+           }
         }
 
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -1010,82 +686,7 @@ class M365CoreServer {
     });
   }
 
-  private validateDistributionListArgs(args: Record<string, unknown>): DistributionListArgs {
-    if (!args.action || typeof args.action !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing required distribution list parameters');
-    }
-    return {
-      action: args.action as DistributionListArgs['action'],
-      listId: typeof args.listId === 'string' ? args.listId : undefined,
-      displayName: typeof args.displayName === 'string' ? args.displayName : undefined,
-      emailAddress: typeof args.emailAddress === 'string' ? args.emailAddress : undefined,
-      members: Array.isArray(args.members) ? args.members.map(String) : undefined,
-      settings: typeof args.settings === 'object' ? args.settings as DistributionListArgs['settings'] : undefined,
-    };
-  }
-
-  private validateSecurityGroupArgs(args: Record<string, unknown>): SecurityGroupArgs {
-    if (!args.action || typeof args.action !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing required security group parameters');
-    }
-    return {
-      action: args.action as SecurityGroupArgs['action'],
-      groupId: typeof args.groupId === 'string' ? args.groupId : undefined,
-      displayName: typeof args.displayName === 'string' ? args.displayName : undefined,
-      description: typeof args.description === 'string' ? args.description : undefined,
-      members: Array.isArray(args.members) ? args.members.map(String) : undefined,
-      settings: typeof args.settings === 'object' ? args.settings as SecurityGroupArgs['settings'] : undefined,
-    };
-  }
-
-  private validateM365GroupArgs(args: Record<string, unknown>): M365GroupArgs {
-    if (!args.action || typeof args.action !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing required M365 group parameters');
-    }
-    return {
-      action: args.action as M365GroupArgs['action'],
-      groupId: typeof args.groupId === 'string' ? args.groupId : undefined,
-      displayName: typeof args.displayName === 'string' ? args.displayName : undefined,
-      description: typeof args.description === 'string' ? args.description : undefined,
-      owners: Array.isArray(args.owners) ? args.owners.map(String) : undefined,
-      members: Array.isArray(args.members) ? args.members.map(String) : undefined,
-      settings: typeof args.settings === 'object' ? args.settings as M365GroupArgs['settings'] : undefined,
-    };
-  }
-
-  private validateExchangeSettingsArgs(args: Record<string, unknown>): ExchangeSettingsArgs {
-    if (!args.action || !args.settingType || typeof args.action !== 'string' || typeof args.settingType !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing required Exchange settings parameters');
-    }
-    return {
-      action: args.action as ExchangeSettingsArgs['action'],
-      settingType: args.settingType as ExchangeSettingsArgs['settingType'],
-      target: typeof args.target === 'string' ? args.target : undefined,
-      settings: typeof args.settings === 'object' ? args.settings as ExchangeSettingsArgs['settings'] : undefined,
-    };
-  }
-
-  private validateUserManagementArgs(args: Record<string, unknown>): UserManagementArgs {
-    if (!args.action || !args.userId || typeof args.action !== 'string' || typeof args.userId !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing required user management parameters');
-    }
-    return {
-      action: args.action as UserManagementArgs['action'],
-      userPrincipalName: args.userId,
-      settings: typeof args.settings === 'object' ? args.settings as Record<string, unknown> : undefined,
-    };
-  }
-
-  private validateOffboardingArgs(args: Record<string, unknown>): OffboardingArgs {
-    if (!args.action || !args.userId || typeof args.action !== 'string' || typeof args.userId !== 'string') {
-      throw new McpError(ErrorCode.InvalidParams, 'Missing required offboarding parameters');
-    }
-    return {
-      action: args.action as OffboardingArgs['action'],
-      userId: args.userId,
-      options: typeof args.options === 'object' ? args.options as OffboardingArgs['options'] : undefined,
-    };
-  }
+  // --- Tool Handlers ---
 
   private async handleDistributionList(args: DistributionListArgs): Promise<{ content: { type: string; text: string; }[]; }> {
     switch (args.action) {
@@ -1593,6 +1194,390 @@ class M365CoreServer {
         throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
     }
   }
+
+  // --- New Azure AD Role Handler ---
+  private async handleAzureAdRoles(args: AzureAdRoleArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    let apiPath = '';
+    let result: any;
+
+    switch (args.action) {
+      case 'list_roles':
+        apiPath = '/directoryRoles';
+        if (args.filter) {
+          apiPath += `?$filter=${encodeURIComponent(args.filter)}`;
+        }
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'list_role_assignments':
+        // Note: Listing all role assignments requires Directory.Read.All
+        // Filtering by principal requires RoleManagement.Read.Directory
+        apiPath = '/roleManagement/directory/roleAssignments';
+        if (args.filter) {
+          // Example filter: $filter=principalId eq '{principalId}'
+          apiPath += `?$filter=${encodeURIComponent(args.filter)}`;
+        }
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'assign_role':
+        if (!args.roleId || !args.principalId) {
+          throw new McpError(ErrorCode.InvalidParams, 'roleId and principalId are required for assign_role');
+        }
+        apiPath = '/roleManagement/directory/roleAssignments';
+        const assignmentPayload = {
+          '@odata.type': '#microsoft.graph.unifiedRoleAssignment',
+          roleDefinitionId: args.roleId,
+          principalId: args.principalId,
+          directoryScopeId: '/', // Assign at tenant scope
+        };
+        result = await this.graphClient.api(apiPath).post(assignmentPayload);
+        break;
+
+      case 'remove_role_assignment':
+        if (!args.assignmentId) {
+          throw new McpError(ErrorCode.InvalidParams, 'assignmentId is required for remove_role_assignment');
+        }
+        apiPath = `/roleManagement/directory/roleAssignments/${args.assignmentId}`;
+        await this.graphClient.api(apiPath).delete();
+        result = { message: 'Role assignment removed successfully' };
+        break;
+
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+
+  // --- New Azure AD App Handler ---
+  private async handleAzureAdApps(args: AzureAdAppArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    let apiPath = '';
+    let result: any;
+
+    switch (args.action) {
+      case 'list_apps':
+        apiPath = '/applications';
+        if (args.filter) {
+          apiPath += `?$filter=${encodeURIComponent(args.filter)}`;
+        }
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'get_app':
+        if (!args.appId) {
+          throw new McpError(ErrorCode.InvalidParams, 'appId is required for get_app');
+        }
+        apiPath = `/applications/${args.appId}`;
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'update_app':
+        if (!args.appId || !args.appDetails) {
+          throw new McpError(ErrorCode.InvalidParams, 'appId and appDetails are required for update_app');
+        }
+        apiPath = `/applications/${args.appId}`;
+        await this.graphClient.api(apiPath).patch(args.appDetails);
+        result = { message: 'Application updated successfully' };
+        break;
+
+      case 'add_owner':
+        if (!args.appId || !args.ownerId) {
+          throw new McpError(ErrorCode.InvalidParams, 'appId and ownerId are required for add_owner');
+        }
+        apiPath = `/applications/${args.appId}/owners/$ref`;
+        const ownerPayload = {
+          '@odata.id': `https://graph.microsoft.com/v1.0/users/${args.ownerId}`
+        };
+        await this.graphClient.api(apiPath).post(ownerPayload);
+        result = { message: 'Owner added successfully' };
+        break;
+
+      case 'remove_owner':
+        if (!args.appId || !args.ownerId) {
+          throw new McpError(ErrorCode.InvalidParams, 'appId and ownerId are required for remove_owner');
+        }
+        // Need to get the specific owner reference ID first, as Graph requires the owner's directoryObject ID from the owners collection
+        // This is a simplification; a real implementation might need to list owners first to find the correct reference ID.
+        // For now, we'll assume ownerId is the directoryObject ID of the owner within the app's owners collection.
+        apiPath = `/applications/${args.appId}/owners/${args.ownerId}/$ref`;
+        await this.graphClient.api(apiPath).delete();
+        result = { message: 'Owner removed successfully' };
+        break;
+
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+
+  // --- New Azure AD Device Handler ---
+  private async handleAzureAdDevices(args: AzureAdDeviceArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    let apiPath = '';
+    let result: any;
+
+    switch (args.action) {
+      case 'list_devices':
+        apiPath = '/devices';
+        if (args.filter) {
+          apiPath += `?$filter=${encodeURIComponent(args.filter)}`;
+        }
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'get_device':
+        if (!args.deviceId) {
+          throw new McpError(ErrorCode.InvalidParams, 'deviceId is required for get_device');
+        }
+        apiPath = `/devices/${args.deviceId}`;
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'enable_device':
+      case 'disable_device':
+        if (!args.deviceId) {
+          throw new McpError(ErrorCode.InvalidParams, `deviceId is required for ${args.action}`);
+        }
+        // Note: Enabling/Disabling devices is done via update, setting accountEnabled
+        // This requires Device.ReadWrite.All permission.
+        apiPath = `/devices/${args.deviceId}`;
+        await this.graphClient.api(apiPath).patch({
+          accountEnabled: args.action === 'enable_device'
+        });
+        result = { message: `Device ${args.action === 'enable_device' ? 'enabled' : 'disabled'} successfully` };
+        break;
+
+      case 'delete_device':
+        if (!args.deviceId) {
+          throw new McpError(ErrorCode.InvalidParams, 'deviceId is required for delete_device');
+        }
+        // Requires Device.ReadWrite.All permission.
+        apiPath = `/devices/${args.deviceId}`;
+        await this.graphClient.api(apiPath).delete();
+        result = { message: 'Device deleted successfully' };
+        break;
+
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+
+  // --- New Service Principal Handler ---
+  private async handleServicePrincipals(args: AzureAdSpArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    let apiPath = '';
+    let result: any;
+
+    switch (args.action) {
+      case 'list_sps':
+        apiPath = '/servicePrincipals';
+        if (args.filter) {
+          apiPath += `?$filter=${encodeURIComponent(args.filter)}`;
+        }
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'get_sp':
+        if (!args.spId) {
+          throw new McpError(ErrorCode.InvalidParams, 'spId is required for get_sp');
+        }
+        apiPath = `/servicePrincipals/${args.spId}`;
+        result = await this.graphClient.api(apiPath).get();
+        break;
+
+      case 'add_owner':
+        if (!args.spId || !args.ownerId) {
+          throw new McpError(ErrorCode.InvalidParams, 'spId and ownerId are required for add_owner');
+        }
+        // Requires Application.ReadWrite.All or Directory.ReadWrite.All
+        apiPath = `/servicePrincipals/${args.spId}/owners/$ref`;
+        const ownerPayload = {
+          '@odata.id': `https://graph.microsoft.com/v1.0/users/${args.ownerId}`
+        };
+        await this.graphClient.api(apiPath).post(ownerPayload);
+        result = { message: 'Owner added successfully to Service Principal' };
+        break;
+
+      case 'remove_owner':
+        if (!args.spId || !args.ownerId) {
+          throw new McpError(ErrorCode.InvalidParams, 'spId and ownerId are required for remove_owner');
+        }
+        // Requires Application.ReadWrite.All or Directory.ReadWrite.All
+        // Similar to app owners, requires the directoryObject ID of the owner relationship
+        apiPath = `/servicePrincipals/${args.spId}/owners/${args.ownerId}/$ref`;
+        await this.graphClient.api(apiPath).delete();
+        result = { message: 'Owner removed successfully from Service Principal' };
+        break;
+
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+
+  // --- Generic API Call Handler ---
+  private async handleCallMicrosoftApi(args: CallMicrosoftApiArgs): Promise<{ content: { type: string; text: string; }[]; isError?: boolean }> {
+    try {
+      const { apiType, path, method, apiVersion, subscriptionId, queryParams, body } = args;
+
+      if (apiType === 'azure' && !apiVersion) {
+        throw new McpError(ErrorCode.InvalidParams, "apiVersion is required for apiType 'azure'");
+      }
+
+      const config = apiConfigs[apiType];
+      const token = await this.getAccessToken(config.scope);
+
+      let url = config.baseUrl;
+      const urlParams = new URLSearchParams();
+
+      // Construct URL based on API type
+      if (apiType === 'azure') {
+        let azurePath = path;
+        // Prepend subscription if provided and path doesn't already include it
+        if (subscriptionId && !path.toLowerCase().startsWith('/subscriptions/')) {
+           azurePath = `/subscriptions/${subscriptionId}${path.startsWith('/') ? '' : '/'}${path}`;
+        }
+        url += azurePath;
+        urlParams.append('api-version', apiVersion!); // Already validated
+      } else { // graph
+        url += path.startsWith('/') ? path : `/${path}`;
+      }
+
+      // Add query parameters
+      if (queryParams) {
+        for (const [key, value] of Object.entries(queryParams)) {
+          urlParams.append(key, value);
+        }
+      }
+
+      const queryString = urlParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+
+      // Prepare request options
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      if (apiType === 'graph') {
+        headers['ConsistencyLevel'] = 'eventual'; // Good practice for Graph count/filter
+      }
+
+      const requestOptions: RequestInit = {
+        method: method.toUpperCase(),
+        headers: headers
+      };
+
+      if (["POST", "PUT", "PATCH"].includes(method.toUpperCase()) && body !== undefined) {
+        requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+      }
+
+      // Make API request
+      const apiResponse = await fetch(url, requestOptions);
+      const responseText = await apiResponse.text();
+      let responseData: any;
+
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        // If not JSON, return raw text
+        responseData = { rawResponse: responseText };
+      }
+
+      if (!apiResponse.ok) {
+        console.error(`API Error (${apiResponse.status}) for ${method.toUpperCase()} ${url}:`, responseData);
+        // Return error details in a structured way
+         return {
+           content: [{ type: 'text', text: JSON.stringify({
+               error: `API Error (${apiResponse.status} ${apiResponse.statusText})`,
+               url: url,
+               details: responseData
+             }, null, 2)
+           }],
+           isError: true
+         };
+      }
+
+      // Successful response
+      return {
+        content: [{ type: 'text', text: JSON.stringify(responseData, null, 2) }]
+      };
+
+    } catch (error) {
+       console.error("Error in handleCallMicrosoftApi:", error);
+       const errorMessage = error instanceof Error ? error.message : String(error);
+       // Ensure McpError is thrown correctly if it's already one
+       if (error instanceof McpError) {
+          throw error;
+       }
+       // Wrap other errors
+       throw new McpError(ErrorCode.InternalError, `Failed to execute API call: ${errorMessage}`);
+    }
+  }
+
+  // --- Security & Compliance Handlers ---
+
+  private async handleSearchAuditLog(args: AuditLogArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    // Primarily targets /auditLogs/directoryAudits for now
+    // Requires AuditLog.Read.All permission
+    let apiPath = '/auditLogs/directoryAudits';
+    const queryOptions: string[] = [];
+
+    if (args.filter) {
+      queryOptions.push(`$filter=${encodeURIComponent(args.filter)}`);
+    }
+    if (args.top) {
+      queryOptions.push(`$top=${args.top}`);
+    }
+
+    if (queryOptions.length > 0) {
+      apiPath += `?${queryOptions.join('&')}`;
+    }
+
+    const result = await this.graphClient.api(apiPath).get();
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+
+  private async handleManageAlerts(args: AlertArgs): Promise<{ content: { type: string; text: string; }[]; }> {
+    // Uses the newer alerts_v2 endpoint
+    // Requires SecurityAlert.Read.All permission
+    let apiPath = '/security/alerts_v2';
+    let result: any;
+
+    switch (args.action) {
+      case 'list_alerts': {
+        const queryOptions: string[] = [];
+        if (args.filter) {
+          queryOptions.push(`$filter=${encodeURIComponent(args.filter)}`);
+        }
+        if (args.top) {
+          queryOptions.push(`$top=${args.top}`);
+        }
+        if (queryOptions.length > 0) {
+          apiPath += `?${queryOptions.join('&')}`;
+        }
+        result = await this.graphClient.api(apiPath).get();
+        break;
+      }
+      case 'get_alert': {
+        if (!args.alertId) {
+          throw new McpError(ErrorCode.InvalidParams, 'alertId is required for get_alert');
+        }
+        apiPath += `/${args.alertId}`;
+        result = await this.graphClient.api(apiPath).get();
+        break;
+      }
+      default:
+        throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+    }
+
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+
 
   async run(): Promise<void> {
     const transport = new StdioServerTransport();

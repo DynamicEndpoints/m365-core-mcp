@@ -115,3 +115,60 @@ export interface ExchangeSettingsArgs {
     }[];
   };
 }
+
+// --- Azure AD Types ---
+export interface AzureAdRoleArgs {
+  action: 'list_roles' | 'list_role_assignments' | 'assign_role' | 'remove_role_assignment';
+  roleId?: string; // ID of the directoryRole
+  principalId?: string; // ID of the user, group, or SP
+  assignmentId?: string; // ID of the role assignment
+  filter?: string; // OData filter
+}
+
+export interface AzureAdAppArgs {
+  action: 'list_apps' | 'get_app' | 'update_app' | 'add_owner' | 'remove_owner';
+  appId?: string; // Object ID of the application
+  ownerId?: string; // Object ID of the user to add/remove as owner
+  appDetails?: { // Details for update_app
+    displayName?: string;
+    signInAudience?: string;
+    // Add other updatable properties as needed
+  };
+  filter?: string; // OData filter for list_apps
+}
+
+export interface AzureAdDeviceArgs {
+  action: 'list_devices' | 'get_device' | 'enable_device' | 'disable_device' | 'delete_device';
+  deviceId?: string; // Object ID of the device
+  filter?: string; // OData filter for list_devices
+}
+
+export interface AzureAdSpArgs {
+  action: 'list_sps' | 'get_sp' | 'add_owner' | 'remove_owner';
+  spId?: string; // Object ID of the Service Principal
+  ownerId?: string; // Object ID of the user to add/remove as owner
+  filter?: string; // OData filter for list_sps
+}
+
+export interface CallMicrosoftApiArgs {
+  apiType: 'graph' | 'azure';
+  path: string;
+  method: 'get' | 'post' | 'put' | 'patch' | 'delete';
+  apiVersion?: string;
+  subscriptionId?: string;
+  queryParams?: Record<string, string>;
+  body?: any;
+}
+
+// --- Security & Compliance Types ---
+export interface AuditLogArgs {
+  filter?: string;
+  top?: number;
+}
+
+export interface AlertArgs {
+  action: 'list_alerts' | 'get_alert';
+  alertId?: string;
+  filter?: string;
+  top?: number;
+}

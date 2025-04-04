@@ -1,3 +1,24 @@
+## Recent Enhancements (April 4, 2025)
+
+Added several new tools to expand Microsoft Entra ID management and Security & Compliance capabilities:
+
+**Entra ID Management:**
+- `manage_azure_ad_roles`: Manage Entra ID directory roles and assignments.
+- `manage_azure_ad_apps`: Manage Entra ID application registrations (list, view, owners).
+- `manage_azure_ad_devices`: Manage Entra ID device objects (list, view, enable/disable/delete).
+- `manage_service_principals`: Manage Entra ID Service Principals (list, view, owners).
+
+**Generic API Access:**
+- `call_microsoft_api`: Call arbitrary Microsoft Graph (including Entra APIs) or Azure Resource Management API endpoints.
+
+**Security & Compliance:**
+- `search_audit_log`: Search the Entra ID Unified Audit Log.
+- `manage_alerts`: List and view security alerts from Microsoft security products.
+
+**Note:** Ensure the associated Entra ID App Registration has the necessary Graph API permissions and Azure RBAC roles for these tools to function correctly.
+
+---
+
 # Microsoft 365 Core MCP Server
 
 An MCP server that provides tools for managing Microsoft 365 core services including:
