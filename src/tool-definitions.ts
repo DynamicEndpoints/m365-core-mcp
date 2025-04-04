@@ -427,7 +427,7 @@ export const m365CoreTools = [
               name: { type: "string" },
               type: { type: "string" },
               required: { type: "boolean" },
-              defaultValue: { type: "any" }
+              defaultValue: {} // Removed invalid type: "any"
             }
           },
           description: "Columns for the SharePoint list"

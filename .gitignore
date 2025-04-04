@@ -55,3 +55,5 @@ coverage/
 *.swp
 *.swo
 .DS_Store
+policy_documentation.md
+policy_documentation.html
