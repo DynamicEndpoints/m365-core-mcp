@@ -1,9 +1,13 @@
+import { z } from 'zod';
+
+// User Management Types
 export interface UserManagementArgs {
   action: 'get' | 'update';
-  userPrincipalName: string;
+  userId: string;
   settings?: Record<string, unknown>;
 }
 
+// Offboarding Types
 export interface OffboardingArgs {
   action: 'start' | 'check' | 'complete';
   userId: string;
@@ -15,6 +19,7 @@ export interface OffboardingArgs {
   };
 }
 
+// Distribution List Types
 export interface DistributionListArgs {
   action: 'get' | 'create' | 'update' | 'delete' | 'add_members' | 'remove_members';
   listId?: string;
@@ -28,6 +33,7 @@ export interface DistributionListArgs {
   };
 }
 
+// Security Group Types
 export interface SecurityGroupArgs {
   action: 'get' | 'create' | 'update' | 'delete' | 'add_members' | 'remove_members';
   groupId?: string;
@@ -40,6 +46,7 @@ export interface SecurityGroupArgs {
   };
 }
 
+// M365 Group Types
 export interface M365GroupArgs {
   action: 'get' | 'create' | 'update' | 'delete' | 'add_members' | 'remove_members';
   groupId?: string;
@@ -54,6 +61,34 @@ export interface M365GroupArgs {
   };
 }
 
+// Exchange Settings Types
+export interface ExchangeSettingsArgs {
+  action: 'get' | 'update';
+  settingType: 'mailbox' | 'transport' | 'organization' | 'retention';
+  target?: string;
+  settings?: {
+    automateProcessing?: {
+      autoReplyEnabled?: boolean;
+      autoForwardEnabled?: boolean;
+    };
+    rules?: {
+      name: string;
+      conditions: Record<string, unknown>;
+      actions: Record<string, unknown>;
+    }[];
+    sharingPolicy?: {
+      domains: string[];
+      enabled: boolean;
+    };
+    retentionTags?: {
+      name: string;
+      type: string;
+      retentionDays: number;
+    }[];
+  };
+}
+
+// SharePoint Site Types
 export interface SharePointSiteArgs {
   action: 'get' | 'create' | 'update' | 'delete' | 'add_users' | 'remove_users';
   siteId?: string;
@@ -70,6 +105,7 @@ export interface SharePointSiteArgs {
   };
 }
 
+// SharePoint List Types
 export interface SharePointListArgs {
   action: 'get' | 'create' | 'update' | 'delete' | 'add_items' | 'get_items';
   siteId: string;
@@ -86,70 +122,44 @@ export interface SharePointListArgs {
   items?: Record<string, any>[];
 }
 
-export interface ExchangeSettingsArgs {
-  action: 'get' | 'update';
-  settingType: 'mailbox' | 'transport' | 'organization' | 'retention';
-  target?: string; // User/Group ID for mailbox settings
-  settings?: {
-    // Mailbox settings
-    automateProcessing?: {
-      autoReplyEnabled?: boolean;
-      autoForwardEnabled?: boolean;
-    };
-    // Transport settings
-    rules?: {
-      name: string;
-      conditions: Record<string, unknown>;
-      actions: Record<string, unknown>;
-    }[];
-    // Organization settings
-    sharingPolicy?: {
-      domains: string[];
-      enabled: boolean;
-    };
-    // Retention settings
-    retentionTags?: {
-      name: string;
-      type: string;
-      retentionDays: number;
-    }[];
-  };
-}
-
-// --- Azure AD Types ---
+// Azure AD Role Types
 export interface AzureAdRoleArgs {
   action: 'list_roles' | 'list_role_assignments' | 'assign_role' | 'remove_role_assignment';
-  roleId?: string; // ID of the directoryRole
-  principalId?: string; // ID of the user, group, or SP
-  assignmentId?: string; // ID of the role assignment
-  filter?: string; // OData filter
+  roleId?: string;
+  principalId?: string;
+  assignmentId?: string;
+  filter?: string;
 }
 
+// Azure AD App Types
 export interface AzureAdAppArgs {
   action: 'list_apps' | 'get_app' | 'update_app' | 'add_owner' | 'remove_owner';
-  appId?: string; // Object ID of the application
-  ownerId?: string; // Object ID of the user to add/remove as owner
-  appDetails?: { // Details for update_app
+  appId?: string;
+  ownerId?: string;
+  appDetails?: {
     displayName?: string;
     signInAudience?: string;
-    // Add other updatable properties as needed
+    [key: string]: any;
   };
-  filter?: string; // OData filter for list_apps
+  filter?: string;
 }
 
+// Azure AD Device Types
 export interface AzureAdDeviceArgs {
   action: 'list_devices' | 'get_device' | 'enable_device' | 'disable_device' | 'delete_device';
-  deviceId?: string; // Object ID of the device
-  filter?: string; // OData filter for list_devices
+  deviceId?: string;
+  filter?: string;
 }
 
+// Azure AD Service Principal Types
 export interface AzureAdSpArgs {
   action: 'list_sps' | 'get_sp' | 'add_owner' | 'remove_owner';
-  spId?: string; // Object ID of the Service Principal
-  ownerId?: string; // Object ID of the user to add/remove as owner
-  filter?: string; // OData filter for list_sps
+  spId?: string;
+  ownerId?: string;
+  filter?: string;
 }
 
+// Generic Microsoft API Call Types
 export interface CallMicrosoftApiArgs {
   apiType: 'graph' | 'azure';
   path: string;
@@ -160,12 +170,13 @@ export interface CallMicrosoftApiArgs {
   body?: any;
 }
 
-// --- Security & Compliance Types ---
+// Audit Log Types
 export interface AuditLogArgs {
   filter?: string;
   top?: number;
 }
 
+// Alert Types
 export interface AlertArgs {
   action: 'list_alerts' | 'get_alert';
   alertId?: string;

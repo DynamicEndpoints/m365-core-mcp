@@ -1,4 +1,11 @@
-## Recent Enhancements (April 4, 2025)
+## Recent Enhancements (May 3, 2025)
+
+**MCP and HTTP Streaming Updates:**
+- Updated MCP SDK to version 1.12.0
+- Enhanced HTTP streaming support with both stateful and stateless modes
+- Added environment variables for configuring HTTP transport options
+
+## Previous Enhancements (April 4, 2025)
 
 Added several new tools to expand Microsoft Entra ID management and Security & Compliance capabilities:
 
@@ -98,6 +105,12 @@ npx -y @smithery/cli install @DynamicEndpoints/m365-core-mcp --client claude
    MS_TENANT_ID=your-tenant-id
    MS_CLIENT_ID=your-client-id
    MS_CLIENT_SECRET=your-client-secret
+   
+   # Optional Configuration
+   # LOG_LEVEL=info    # debug, info, warn, error
+   # PORT=3000         # Port for HTTP server if needed
+   # USE_HTTP=true     # Set to 'true' to use HTTP transport instead of stdio
+   # STATELESS=false   # Set to 'true' to use stateless HTTP mode (no session management)
    ```
 4. Register an application in Azure AD:
    - Required permissions:
@@ -119,6 +132,47 @@ npx -y @smithery/cli install @DynamicEndpoints/m365-core-mcp --client claude
    ```bash
    npm start
    ```
+
+## Transport Options
+
+The server supports multiple transport options for MCP communication:
+
+### stdio Transport
+
+By default, the server uses stdio transport, which is ideal for:
+- Command-line tools and direct integrations
+- Local development and testing
+- Integration with Smithery and other MCP clients that support stdio
+
+### HTTP Transport
+
+The server also supports HTTP transport with two modes:
+
+#### Stateful Mode (With Session Management)
+
+This is the default HTTP mode when `USE_HTTP=true` and `STATELESS=false`:
+- Maintains session state between requests
+- Supports server-to-client notifications via GET requests
+- Handles session termination via DELETE requests
+- Ideal for long-running sessions and interactive applications
+- Provides better performance for multiple requests in the same session
+
+#### Stateless Mode
+
+Enable this mode by setting `USE_HTTP=true` and `STATELESS=true`:
+- Creates a new server instance for each request
+- No session state is maintained between requests
+- Only supports POST requests (GET and DELETE are not supported)
+- Ideal for RESTful scenarios where each request is independent
+- Better for horizontally scaled deployments without shared session state
+- Simpler API wrappers where session management isn't needed
+
+To configure the transport options, set the appropriate environment variables in your `.env` file:
+```
+USE_HTTP=true     # Use HTTP transport instead of stdio
+STATELESS=false   # Use stateful mode with session management (default)
+PORT=3000         # Port for the HTTP server
+```
 
 ## Usage
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Define Zod schemas for validation
-export const sharePointSiteSchema = z.object({
+export const sharePointSiteSchema = {
   action: z.enum(['get', 'create', 'update', 'delete', 'add_users', 'remove_users']),
   siteId: z.string().optional(),
   url: z.string().optional(),
@@ -15,9 +15,9 @@ export const sharePointSiteSchema = z.object({
     allowSharing: z.boolean().optional(),
     storageQuota: z.number().optional(),
   }).optional(),
-});
+};
 
-export const sharePointListSchema = z.object({
+export const sharePointListSchema = {
   action: z.enum(['get', 'create', 'update', 'delete', 'add_items', 'get_items']),
   siteId: z.string(),
   listId: z.string().optional(),
@@ -31,9 +31,9 @@ export const sharePointListSchema = z.object({
     defaultValue: z.any().optional(),
   })).optional(),
   items: z.array(z.record(z.any())).optional(),
-});
+};
 
-export const distributionListSchema = z.object({
+export const distributionListSchema = {
   action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
   listId: z.string().optional(),
   displayName: z.string().optional(),
@@ -44,9 +44,9 @@ export const distributionListSchema = z.object({
     requireSenderAuthentication: z.boolean().optional(),
     moderatedBy: z.array(z.string()).optional(),
   }).optional(),
-});
+};
 
-export const securityGroupSchema = z.object({
+export const securityGroupSchema = {
   action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
   groupId: z.string().optional(),
   displayName: z.string().optional(),
@@ -56,9 +56,9 @@ export const securityGroupSchema = z.object({
     securityEnabled: z.boolean().optional(),
     mailEnabled: z.boolean().optional(),
   }).optional(),
-});
+};
 
-export const m365GroupSchema = z.object({
+export const m365GroupSchema = {
   action: z.enum(['get', 'create', 'update', 'delete', 'add_members', 'remove_members']),
   groupId: z.string().optional(),
   displayName: z.string().optional(),
@@ -70,9 +70,9 @@ export const m365GroupSchema = z.object({
     allowExternalSenders: z.boolean().optional(),
     autoSubscribeNewMembers: z.boolean().optional(),
   }).optional(),
-});
+};
 
-export const exchangeSettingsSchema = z.object({
+export const exchangeSettingsSchema = {
   action: z.enum(['get', 'update']),
   settingType: z.enum(['mailbox', 'transport', 'organization', 'retention']),
   target: z.string().optional(),
@@ -96,15 +96,15 @@ export const exchangeSettingsSchema = z.object({
       retentionDays: z.number(),
     })).optional(),
   }).optional(),
-});
+};
 
-export const userManagementSchema = z.object({
+export const userManagementSchema = {
   action: z.enum(['get', 'update']),
   userId: z.string(),
   settings: z.record(z.unknown()).optional(),
-});
+};
 
-export const offboardingSchema = z.object({
+export const offboardingSchema = {
   action: z.enum(['start', 'check', 'complete']),
   userId: z.string(),
   options: z.object({
@@ -113,18 +113,18 @@ export const offboardingSchema = z.object({
     convertToShared: z.boolean().optional(),
     backupData: z.boolean().optional(),
   }).optional(),
-});
+};
 
 // --- Azure AD Schemas ---
-export const azureAdRoleSchema = z.object({
+export const azureAdRoleSchema = {
   action: z.enum(['list_roles', 'list_role_assignments', 'assign_role', 'remove_role_assignment']),
   roleId: z.string().optional(), // ID of the directoryRole
   principalId: z.string().optional(), // ID of the user, group, or SP
   assignmentId: z.string().optional(), // ID of the role assignment
   filter: z.string().optional(), // OData filter
-});
+};
 
-export const azureAdAppSchema = z.object({
+export const azureAdAppSchema = {
   action: z.enum(['list_apps', 'get_app', 'update_app', 'add_owner', 'remove_owner']),
   appId: z.string().optional(), // Object ID of the application
   ownerId: z.string().optional(), // Object ID of the user to add/remove as owner
@@ -134,22 +134,22 @@ export const azureAdAppSchema = z.object({
     // Add other updatable properties as needed
   }).optional(),
   filter: z.string().optional(), // OData filter for list_apps
-});
+};
 
-export const azureAdDeviceSchema = z.object({
+export const azureAdDeviceSchema = {
   action: z.enum(['list_devices', 'get_device', 'enable_device', 'disable_device', 'delete_device']),
   deviceId: z.string().optional(), // Object ID of the device
   filter: z.string().optional(), // OData filter for list_devices
-});
+};
 
-export const azureAdSpSchema = z.object({
+export const azureAdSpSchema = {
   action: z.enum(['list_sps', 'get_sp', 'add_owner', 'remove_owner']),
   spId: z.string().optional(), // Object ID of the Service Principal
   ownerId: z.string().optional(), // Object ID of the user to add/remove as owner
   filter: z.string().optional(), // OData filter for list_sps
-});
+};
 
-export const callMicrosoftApiSchema = z.object({
+export const callMicrosoftApiSchema = {
   apiType: z.enum(["graph", "azure"]).describe("Type of Microsoft API: 'graph' or 'azure'."),
   path: z.string().describe("API URL path (e.g., '/users', '/subscriptions/{subId}/resourceGroups')."),
   method: z.enum(["get", "post", "put", "patch", "delete"]).describe("HTTP method."),
@@ -157,23 +157,23 @@ export const callMicrosoftApiSchema = z.object({
   subscriptionId: z.string().optional().describe("Azure Subscription ID (required for most 'azure' paths)."),
   queryParams: z.record(z.string()).optional().describe("Query parameters as key-value pairs."),
   body: z.any().optional().describe("Request body (for POST, PUT, PATCH)."),
-});
+};
 
 // --- Security & Compliance Schemas ---
-export const auditLogSchema = z.object({
+export const auditLogSchema = {
   filter: z.string().optional().describe("OData filter string (e.g., 'activityDateTime ge 2024-01-01T00:00:00Z and initiatedBy/user/id eq \\'...'')"),
   top: z.number().int().positive().optional().describe("Maximum number of records to return."),
-});
+};
 
-export const alertSchema = z.object({
+export const alertSchema = {
   action: z.enum(['list_alerts', 'get_alert']).describe("Action to perform."),
   alertId: z.string().optional().describe("ID of the alert (required for get_alert)."),
   filter: z.string().optional().describe("OData filter string (e.g., 'status eq \\'new\\'')."),
   top: z.number().int().positive().optional().describe("Maximum number of alerts to return."),
-});
+};
 
 
-// Define tools with Zod schemas
+// Define tools with descriptions
 export const m365CoreTools = [
   {
     name: "manage_azure_ad_roles",
