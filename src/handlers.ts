@@ -532,101 +532,273 @@ export async function handleCallMicrosoftApi(
   apiConfigs: any
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   try {
-    const { apiType, path, method, apiVersion, subscriptionId, queryParams, body } = args;
+    const { 
+      apiType, 
+      path, 
+      method, 
+      apiVersion, 
+      subscriptionId, 
+      queryParams, 
+      body, 
+      graphApiVersion = 'v1.0', 
+      fetchAll = false,
+      consistencyLevel
+    } = args;
 
     if (apiType === 'azure' && !apiVersion) {
       throw new McpError(ErrorCode.InvalidParams, "apiVersion is required for apiType 'azure'");
     }
 
-    const config = apiConfigs[apiType];
-    const token = await getAccessToken(config.scope);
-
-    let url = config.baseUrl;
-    const urlParams = new URLSearchParams();
-
-    // Construct URL based on API type
-    if (apiType === 'azure') {
-      let azurePath = path;
-      // Prepend subscription if provided and path doesn't already include it
-      if (subscriptionId && !path.toLowerCase().startsWith('/subscriptions/')) {
-         azurePath = `/subscriptions/${subscriptionId}${path.startsWith('/') ? '' : '/'}${path}`;
-      }
-      url += azurePath;
-      urlParams.append('api-version', apiVersion!); // Already validated
-    } else { // graph
-      url += path.startsWith('/') ? path : `/${path}`;
-    }
-
-    // Add query parameters
-    if (queryParams) {
-      for (const [key, value] of Object.entries(queryParams)) {
-        urlParams.append(key, value);
-      }
-    }
-
-    const queryString = urlParams.toString();
-    if (queryString) {
-      url += `?${queryString}`;
-    }
-
-    // Prepare request options
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-    if (apiType === 'graph') {
-      headers['ConsistencyLevel'] = 'eventual'; // Good practice for Graph count/filter
-    }
-
-    const requestOptions: RequestInit = {
-      method: method.toUpperCase(),
-      headers: headers
-    };
-
-    if (["POST", "PUT", "PATCH"].includes(method.toUpperCase()) && body !== undefined) {
-      requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
-    }
-
-    // Make API request
-    const apiResponse = await fetch(url, requestOptions);
-    const responseText = await apiResponse.text();
+    let determinedUrl: string;
     let responseData: any;
 
-    try {
-      responseData = responseText ? JSON.parse(responseText) : {};
-    } catch (e) {
-      // If not JSON, return raw text
-      responseData = { rawResponse: responseText };
+    // --- Microsoft Graph Logic ---
+    if (apiType === 'graph') {
+      determinedUrl = `https://graph.microsoft.com/${graphApiVersion}`;
+      
+      // Use the Graph SDK client for Graph API calls
+      let request = graphClient.api(path).version(graphApiVersion);
+      
+      // Add query parameters if provided
+      if (queryParams && Object.keys(queryParams).length > 0) {
+        request = request.query(queryParams);
+      }
+      
+      // Add ConsistencyLevel header if provided
+      if (consistencyLevel) {
+        request = request.header('ConsistencyLevel', consistencyLevel);
+        console.log(`Added ConsistencyLevel header: ${consistencyLevel}`);
+      }
+      
+      // Handle different methods
+      switch (method.toLowerCase()) {
+        case 'get':
+          if (fetchAll) {
+            console.log(`Fetching all pages for Graph path: ${path}`);
+            
+            // Initialize with empty array for collecting all items
+            let allItems: any[] = [];
+            let nextLink: string | null | undefined = null;
+            
+            // Get first page
+            const firstPageResponse = await request.get();
+            
+            // Store context from first page
+            const odataContext = firstPageResponse['@odata.context'];
+            
+            // Add items from first page
+            if (firstPageResponse.value && Array.isArray(firstPageResponse.value)) {
+              allItems = [...firstPageResponse.value];
+            }
+            
+            // Get nextLink from first page
+            nextLink = firstPageResponse['@odata.nextLink'];
+            
+            // Fetch subsequent pages
+            while (nextLink) {
+              console.log(`Fetching next page: ${nextLink}`);
+              
+              // Create a new request for the next page
+              const nextPageResponse = await graphClient.api(nextLink).get();
+              
+              // Add items from next page
+              if (nextPageResponse.value && Array.isArray(nextPageResponse.value)) {
+                allItems = [...allItems, ...nextPageResponse.value];
+              }
+              
+              // Update nextLink
+              nextLink = nextPageResponse['@odata.nextLink'];
+            }
+            
+            // Construct final response
+            responseData = {
+              '@odata.context': odataContext,
+              value: allItems
+            };
+            
+            console.log(`Finished fetching all Graph pages. Total items: ${allItems.length}`);
+          } else {
+            console.log(`Fetching single page for Graph path: ${path}`);
+            responseData = await request.get();
+          }
+          break;
+        case 'post':
+          responseData = await request.post(body ?? {});
+          break;
+        case 'put':
+          responseData = await request.put(body ?? {});
+          break;
+        case 'patch':
+          responseData = await request.patch(body ?? {});
+          break;
+        case 'delete':
+          responseData = await request.delete();
+          // Handle potential 204 No Content response
+          if (responseData === undefined || responseData === null) {
+            responseData = { status: "Success (No Content)" };
+          }
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
+      }
+    }
+    // --- Azure Resource Management Logic ---
+    else { // apiType === 'azure'
+      determinedUrl = "https://management.azure.com";
+      
+      const config = apiConfigs[apiType];
+      const token = await getAccessToken(config.scope);
+      
+      let url = determinedUrl;
+      if (subscriptionId) {
+        url += `/subscriptions/${subscriptionId}`;
+      }
+      url += path.startsWith('/') ? path : `/${path}`;
+      
+      const urlParams = new URLSearchParams();
+      urlParams.append('api-version', apiVersion!);
+      
+      if (queryParams) {
+        for (const [key, value] of Object.entries(queryParams)) {
+          urlParams.append(key, value);
+        }
+      }
+      
+      url += `?${urlParams.toString()}`;
+      
+      // Prepare request options
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      const requestOptions: RequestInit = {
+        method: method.toUpperCase(),
+        headers: headers
+      };
+      
+      if (["POST", "PUT", "PATCH"].includes(method.toUpperCase()) && body !== undefined) {
+        requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+      }
+      
+      // --- Pagination Logic for Azure RM ---
+      if (fetchAll && method.toLowerCase() === 'get') {
+        console.log(`Fetching all pages for Azure RM starting from: ${url}`);
+        
+        let allValues: any[] = [];
+        let currentUrl: string | null = url;
+        
+        while (currentUrl) {
+          console.log(`Fetching Azure RM page: ${currentUrl}`);
+          
+          // Re-acquire token for each page (Azure tokens might expire)
+          const currentPageToken = await getAccessToken(config.scope);
+          const currentPageHeaders = { ...headers, 'Authorization': `Bearer ${currentPageToken}` };
+          const currentPageRequestOptions: RequestInit = { 
+            method: 'GET', 
+            headers: currentPageHeaders 
+          };
+          
+          const pageResponse = await fetch(currentUrl, currentPageRequestOptions);
+          const pageText = await pageResponse.text();
+          
+          let pageData: any;
+          try {
+            pageData = pageText ? JSON.parse(pageText) : {};
+          } catch (e) {
+            console.error(`Failed to parse JSON from Azure RM page: ${currentUrl}`, pageText);
+            pageData = { rawResponse: pageText };
+          }
+          
+          if (!pageResponse.ok) {
+            console.error(`API error on Azure RM page ${currentUrl}:`, pageData);
+            throw new Error(`API error (${pageResponse.status}) during Azure RM pagination on ${currentUrl}: ${JSON.stringify(pageData)}`);
+          }
+          
+          if (pageData.value && Array.isArray(pageData.value)) {
+            allValues = allValues.concat(pageData.value);
+          } else if (currentUrl === url && !pageData.nextLink) {
+            // If this is the first page and there's no nextLink, it might be a single resource
+            allValues.push(pageData);
+          }
+          
+          currentUrl = pageData.nextLink || null; // Azure uses nextLink
+        }
+        
+        responseData = { value: allValues };
+        console.log(`Finished fetching all Azure RM pages. Total items: ${allValues.length}`);
+      } else {
+        // Single page fetch for Azure RM
+        console.log(`Fetching single page for Azure RM: ${url}`);
+        
+        const apiResponse = await fetch(url, requestOptions);
+        const responseText = await apiResponse.text();
+        
+        try {
+          responseData = responseText ? JSON.parse(responseText) : {};
+        } catch (e) {
+          console.error(`Failed to parse JSON from single Azure RM page: ${url}`, responseText);
+          responseData = { rawResponse: responseText };
+        }
+        
+        if (!apiResponse.ok) {
+          console.error(`API error for Azure RM ${method} ${path}:`, responseData);
+          throw new Error(`API error (${apiResponse.status}) for Azure RM: ${JSON.stringify(responseData)}`);
+        }
+      }
     }
 
-    if (!apiResponse.ok) {
-      console.error(`API Error (${apiResponse.status}) for ${method.toUpperCase()} ${url}:`, responseData);
-      // Return error details in a structured way
-       return {
-         content: [{ type: 'text', text: JSON.stringify({
-             error: `API Error (${apiResponse.status} ${apiResponse.statusText})`,
-             url: url,
-             details: responseData
-           }, null, 2)
-         }],
-         isError: true
-       };
+    // --- Format and Return Result ---
+    let resultText = `Result for ${apiType} API (${apiType === 'graph' ? graphApiVersion : apiVersion}) - ${method} ${path}:\n\n`;
+    resultText += JSON.stringify(responseData, null, 2);
+    
+    // Add pagination note if applicable (only for single page GET)
+    if (!fetchAll && method.toLowerCase() === 'get') {
+      const nextLinkKey = apiType === 'graph' ? '@odata.nextLink' : 'nextLink';
+      if (responseData && responseData[nextLinkKey]) {
+        resultText += `\n\nNote: More results are available. To retrieve all pages, add the parameter 'fetchAll: true' to your request.`;
+      }
     }
-
-    // Successful response
+    
     return {
-      content: [{ type: 'text', text: JSON.stringify(responseData, null, 2) }]
+      content: [{ type: "text", text: resultText }],
     };
-
   } catch (error) {
-     console.error("Error in handleCallMicrosoftApi:", error);
-     const errorMessage = error instanceof Error ? error.message : String(error);
-     // Ensure McpError is thrown correctly if it's already one
-     if (error instanceof McpError) {
-        throw error;
-     }
-     // Wrap other errors
-     throw new McpError(ErrorCode.InternalError, `Failed to execute API call: ${errorMessage}`);
+    console.error("Error in handleCallMicrosoftApi:", error);
+    
+    // Try to determine the base URL even in case of error
+    const determinedUrl = args.apiType === 'graph'
+      ? `https://graph.microsoft.com/${args.graphApiVersion || 'v1.0'}`
+      : "https://management.azure.com";
+    
+    // Include error body if available
+    let errorBody = 'N/A';
+    let statusCode = 'N/A';
+    
+    // Type guard for error object with body property
+    if (error && typeof error === 'object') {
+      if ('body' in error) {
+        const body = (error as any).body;
+        errorBody = typeof body === 'string' ? body : JSON.stringify(body);
+      }
+      
+      if ('statusCode' in error) {
+        statusCode = String((error as any).statusCode);
+      }
+    }
+    
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          statusCode: statusCode,
+          errorBody: errorBody,
+          attemptedBaseUrl: determinedUrl
+        }, null, 2),
+      }],
+      isError: true
+    };
   }
 }
 

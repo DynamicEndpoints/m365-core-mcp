@@ -157,6 +157,9 @@ export const callMicrosoftApiSchema = {
   subscriptionId: z.string().optional().describe("Azure Subscription ID (required for most 'azure' paths)."),
   queryParams: z.record(z.string()).optional().describe("Query parameters as key-value pairs."),
   body: z.any().optional().describe("Request body (for POST, PUT, PATCH)."),
+  graphApiVersion: z.enum(["v1.0", "beta"]).optional().default("v1.0").describe("Microsoft Graph API version to use (default: v1.0)."),
+  fetchAll: z.boolean().optional().default(false).describe("Set to true to automatically fetch all pages for list results (e.g., users, groups). Default is false."),
+  consistencyLevel: z.string().optional().describe("Graph API ConsistencyLevel header. Set to 'eventual' for Graph GET requests using advanced query parameters ($filter, $count, $search, $orderby)."),
 };
 
 // --- Security & Compliance Schemas ---
@@ -277,7 +280,10 @@ export const m365CoreTools = [
         apiVersion: { type: "string", description: "Azure API version (required for 'azure')." },
         subscriptionId: { type: "string", description: "Azure Subscription ID (for 'azure')." },
         queryParams: { type: "object", additionalProperties: { type: "string" }, description: "Query parameters." },
-        body: { type: "object", description: "Request body (for POST, PUT, PATCH)." } // Representing 'any' as object for schema
+        body: { type: "object", description: "Request body (for POST, PUT, PATCH)." }, // Representing 'any' as object for schema
+        graphApiVersion: { type: "string", enum: ["v1.0", "beta"], description: "Microsoft Graph API version to use (default: v1.0)." },
+        fetchAll: { type: "boolean", description: "Set to true to automatically fetch all pages for list results (e.g., users, groups). Default is false." },
+        consistencyLevel: { type: "string", description: "Graph API ConsistencyLevel header. Set to 'eventual' for Graph GET requests using advanced query parameters ($filter, $count, $search, $orderby)." }
       },
       required: ["apiType", "path", "method"]
     }

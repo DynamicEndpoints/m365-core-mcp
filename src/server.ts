@@ -10,6 +10,10 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
+// Import Azure Identity library (commented out due to package installation issues)
+// import { ClientSecretCredential } from '@azure/identity';
+// import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
+
 import {
   UserManagementArgs,
   OffboardingArgs,
@@ -98,7 +102,7 @@ export class M365CoreServer {
       version: '1.0.0',
     });
 
-    // Initialize Graph client with default scope
+    // Current authentication method
     this.graphClient = Client.init({
       authProvider: async (callback: (error: Error | null, token: string | null) => void) => {
         try {
@@ -109,6 +113,23 @@ export class M365CoreServer {
         }
       }
     });
+
+    // Azure Identity authentication method (commented out due to package installation issues)
+    // Uncomment this code and comment out the above authentication method once you've installed the required packages
+    /*
+    // Initialize Azure Credential
+    const azureCredential = new ClientSecretCredential(MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET);
+
+    // Initialize Graph Authentication Provider
+    const authProvider = new TokenCredentialAuthenticationProvider(azureCredential, {
+      scopes: ["https://graph.microsoft.com/.default"],
+    });
+
+    // Initialize Graph Client
+    this.graphClient = Client.initWithMiddleware({
+      authProvider: authProvider,
+    });
+    */
 
     this.setupTools();
     this.setupResources();

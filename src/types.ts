@@ -168,6 +168,9 @@ export interface CallMicrosoftApiArgs {
   subscriptionId?: string;
   queryParams?: Record<string, string>;
   body?: any;
+  graphApiVersion?: 'v1.0' | 'beta';
+  fetchAll?: boolean;
+  consistencyLevel?: string;
 }
 
 // Audit Log Types
