@@ -1,3 +1,15 @@
+## Recent Enhancements (June 7, 2025)
+
+**TypeScript Error Resolution & Compliance Module Enhancements:**
+- Resolved all TypeScript errors in `src/server.ts` and `src/handlers/compliance-handler.ts` related to incorrect tool registration syntax and type mismatches.
+- Enhanced the compliance module to include comprehensive support for CIS (Center for Internet Security) controls.
+- Updated `ComplianceFrameworkArgs` to recognize 'cis' as a valid framework.
+- Corrected parameter parsing in compliance handler functions to properly handle string-to-number conversions for implementation groups.
+
+**Conditional Access Policy Review & Reporting:**
+- Implemented functionality to retrieve and review Microsoft Entra Conditional Access policies.
+
+
 ## Recent Enhancements (May 3, 2025)
 
 **MCP and HTTP Streaming Updates:**
