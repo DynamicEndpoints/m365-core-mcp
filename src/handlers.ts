@@ -14,6 +14,52 @@ import {
   AlertArgs,
 } from './types.js';
 
+// Import DLP handlers and types
+import {
+  handleDLPPolicies,
+  handleDLPIncidents,
+  handleDLPSensitivityLabels
+} from './handlers/dlp-handler.js';
+import {
+  DLPPolicyArgs,
+  DLPIncidentArgs,
+  DLPSensitivityLabelArgs
+} from './types/dlp-types.js';
+
+// Import Intune macOS handlers and types
+import {
+  handleIntuneMacOSDevices,
+  handleIntuneMacOSPolicies,
+  handleIntuneMacOSApps,
+  handleIntuneMacOSCompliance
+} from './handlers/intune-macos-handler.js';
+import {
+  IntuneMacOSDeviceArgs,
+  IntuneMacOSPolicyArgs,
+  IntuneMacOSAppArgs,
+  IntuneMacOSComplianceArgs
+} from './types/intune-types.js';
+
+// Import compliance handlers and types
+import {
+  handleComplianceFrameworks,
+  handleComplianceAssessments,
+  handleComplianceMonitoring,
+  handleEvidenceCollection,
+  handleGapAnalysis
+} from './handlers/compliance-handler.js';
+import {
+  ComplianceFrameworkArgs,
+  ComplianceAssessmentArgs,
+  ComplianceMonitoringArgs,
+  EvidenceCollectionArgs,
+  GapAnalysisArgs
+} from './types/compliance-types.js';
+
+// Import audit reporting handler
+import { handleAuditReports } from './handlers/audit-reporting-handler.js';
+import { AuditReportArgs } from './types/compliance-types.js';
+
 // User Management Handler
 export async function handleUserSettings(
   graphClient: Client,
