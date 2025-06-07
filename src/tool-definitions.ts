@@ -336,6 +336,24 @@ export const auditReportSchema = {
   }).optional()
 };
 
+export const cisComplianceSchema = {
+  action: z.enum(['assess', 'get_benchmark', 'generate_report', 'configure_monitoring', 'remediate']),
+  benchmark: z.enum(['windows-10', 'windows-11', 'windows-server-2019', 'windows-server-2022', 'office365', 'azure', 'intune']).optional(),
+  implementationGroup: z.enum(['1', '2', '3']).optional(),
+  controlIds: z.array(z.string()).optional(),
+  scope: z.object({
+    devices: z.array(z.string()).optional(),
+    users: z.array(z.string()).optional(),
+    policies: z.array(z.string()).optional()
+  }).optional(),
+  settings: z.object({
+    automated: z.boolean().optional(),
+    generateRemediation: z.boolean().optional(),
+    includeEvidence: z.boolean().optional(),
+    riskPrioritization: z.boolean().optional()
+  }).optional()
+};
+
 
 // Define tools with descriptions
 export const m365CoreTools = [
@@ -1014,6 +1032,64 @@ export const m365CoreTools = [
         }
       },
       required: ["framework", "reportType", "dateRange", "format", "includeEvidence"]
+    }
+  },
+  {
+    name: "manage_cis_compliance",
+    description: "Manage CIS Controls compliance assessments and benchmarks",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ['assess', 'get_benchmark', 'generate_report', 'configure_monitoring', 'remediate'],
+          description: "Action to perform for CIS compliance"
+        },
+        benchmark: {
+          type: "string",
+          enum: ['windows-10', 'windows-11', 'windows-server-2019', 'windows-server-2022', 'office365', 'azure', 'intune'],
+          description: "CIS benchmark to use"
+        },
+        implementationGroup: {
+          type: "number",
+          enum: [1, 2, 3],
+          description: "CIS Implementation Group (IG1, IG2, IG3)"
+        },
+        controlIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Specific CIS control IDs to target"
+        },
+        scope: {
+          type: "object",
+          properties: {
+            devices: {
+              type: "array",
+              items: { type: "string" }
+            },
+            users: {
+              type: "array",
+              items: { type: "string" }
+            },
+            policies: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
+          description: "Scope of assessment or remediation"
+        },
+        settings: {
+          type: "object",
+          properties: {
+            automated: { type: "boolean" },
+            generateRemediation: { type: "boolean" },
+            includeEvidence: { type: "boolean" },
+            riskPrioritization: { type: "boolean" }
+          },
+          description: "Assessment and remediation settings"
+        }
+      },
+      required: ["action"]
     }
   },
   {

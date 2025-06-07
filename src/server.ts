@@ -61,6 +61,7 @@ import {
   evidenceCollectionSchema,
   gapAnalysisSchema,
   auditReportSchema,
+  cisComplianceSchema,
   m365CoreTools,
 } from './tool-definitions.js';
 
@@ -110,14 +111,16 @@ import {
   handleComplianceAssessments,
   handleComplianceMonitoring,
   handleEvidenceCollection,
-  handleGapAnalysis
+  handleGapAnalysis,
+  handleCISCompliance
 } from './handlers/compliance-handler.js';
 import {
   ComplianceFrameworkArgs,
   ComplianceAssessmentArgs,
   ComplianceMonitoringArgs,
   EvidenceCollectionArgs,
-  GapAnalysisArgs
+  GapAnalysisArgs,
+  CISComplianceArgs
 } from './types/compliance-types.js';
 
 // Import audit reporting handler
@@ -756,6 +759,25 @@ export class M365CoreServer {
       wrapToolHandler(async (args: AuditReportArgs) => {
         try {
           return await handleAuditReports(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // CIS Compliance Management Tool
+    this.server.tool(
+      "manage_cis_compliance",
+      cisComplianceSchema,
+      wrapToolHandler(async (args: CISComplianceArgs) => {
+        try {
+          return await handleCISCompliance(this.graphClient, args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;

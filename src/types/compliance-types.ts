@@ -1,7 +1,7 @@
 // Compliance Framework Management Types
 export interface ComplianceFrameworkArgs {
   action: 'list' | 'configure' | 'status' | 'assess' | 'activate' | 'deactivate';
-  framework: 'hitrust' | 'iso27001' | 'soc2';
+  framework: 'hitrust' | 'iso27001' | 'soc2' | 'cis';
   scope?: string[];
   settings?: Record<string, unknown>;
 }
@@ -74,7 +74,7 @@ export interface ControlMapping {
 
 // Audit Report Generation Types
 export interface AuditReportArgs {
-  framework: 'hitrust' | 'iso27001' | 'soc2';
+  framework: 'hitrust' | 'iso27001' | 'soc2' | 'cis';
   reportType: 'full' | 'summary' | 'gaps' | 'evidence' | 'executive' | 'control_matrix' | 'risk_assessment';
   dateRange: { 
     startDate: string; 
@@ -407,6 +407,194 @@ export interface SOC2Control {
   frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
   pointInTimeTest: boolean;
   periodOfTimeTest: boolean;
+}
+
+// CIS Controls Types
+export interface CISControl {
+  controlId: string; // Format: CIS-X.X
+  title: string;
+  description: string;
+  assetType: 'Devices' | 'Software' | 'Network' | 'Users' | 'Data';
+  securityFunction: 'Identify' | 'Protect' | 'Detect' | 'Respond' | 'Recover';
+  implementationGroup: 1 | 2 | 3; // IG1, IG2, IG3
+  subControls: CISSubControl[];
+  automatable: boolean;
+  category: 'Basic Hygiene' | 'Foundational' | 'Organizational';
+  nistCsfMapping?: string[];
+  references: string[];
+}
+
+export interface CISSubControl {
+  subControlId: string; // Format: CIS-X.X.X
+  title: string;
+  description: string;
+  implementationGroup: 1 | 2 | 3;
+  automatable: boolean;
+  difficulty: 'Low' | 'Medium' | 'High';
+  testingProcedure: string;
+  remediation: string;
+  relatedSafeguards?: string[];
+}
+
+// CIS Compliance Assessment Types
+export interface CISComplianceArgs {
+  action: 'assess' | 'get_benchmark' | 'generate_report' | 'configure_monitoring' | 'remediate';
+  benchmark?: 'windows-10' | 'windows-11' | 'windows-server-2019' | 'windows-server-2022' | 'office365' | 'azure' | 'intune';
+  implementationGroup?: '1' | '2' | '3';
+  controlIds?: string[];
+  scope?: {
+    devices?: string[];
+    users?: string[];
+    policies?: string[];
+  };
+  settings?: {
+    automated?: boolean;
+    generateRemediation?: boolean;
+    includeEvidence?: boolean;
+    riskPrioritization?: boolean;
+  };
+}
+
+export interface CISBenchmark {
+  id: string;
+  name: string;
+  version: string;
+  platform: string;
+  description: string;
+  controls: CISControl[];
+  profiles: CISProfile[];
+  lastUpdated: string;
+  applicability: string[];
+}
+
+export interface CISProfile {
+  name: string;
+  description: string;
+  level: 1 | 2;
+  controls: string[];
+  applicableEnvironments: string[];
+}
+
+export interface CISAssessmentResult {
+  assessmentId: string;
+  benchmark: string;
+  implementationGroup: number;
+  executedDate: string;
+  overallScore: number;
+  compliancePercentage: number;
+  totalControls: number;
+  passedControls: number;
+  failedControls: number;
+  notApplicableControls: number;
+  controlResults: CISControlResult[];
+  riskSummary: CISRiskSummary;
+  remediationPlan: CISRemediationPlan;
+}
+
+export interface CISControlResult {
+  controlId: string;
+  subControlId?: string;
+  title: string;
+  status: 'Pass' | 'Fail' | 'Not Applicable' | 'Manual Review Required';
+  score: number;
+  implementationGroup: number;
+  automatable: boolean;
+  testResult: string;
+  evidence: CISEvidence[];
+  remediation?: CISRemediation;
+  riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+}
+
+export interface CISEvidence {
+  type: 'Registry' | 'Policy' | 'Configuration' | 'Log' | 'Script';
+  source: string;
+  value: string;
+  expected: string;
+  collected: string;
+  automated: boolean;
+}
+
+export interface CISRemediation {
+  title: string;
+  description: string;
+  steps: string[];
+  automatable: boolean;
+  scriptPath?: string;
+  estimatedTime: string;
+  difficulty: 'Low' | 'Medium' | 'High';
+  impact: 'Low' | 'Medium' | 'High';
+  prerequisites: string[];
+}
+
+export interface CISRiskSummary {
+  criticalFindings: number;
+  highRiskFindings: number;
+  mediumRiskFindings: number;
+  lowRiskFindings: number;
+  topRisks: CISRiskFinding[];
+  riskTrend: CISRiskTrend[];
+}
+
+export interface CISRiskFinding {
+  controlId: string;
+  title: string;
+  riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  impact: string;
+  likelihood: string;
+  affectedAssets: number;
+  businessImpact: string;
+  technicalImpact: string;
+}
+
+export interface CISRiskTrend {
+  date: string;
+  overallScore: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+}
+
+export interface CISRemediationPlan {
+  planId: string;
+  generatedDate: string;
+  totalTasks: number;
+  estimatedTime: string;
+  phases: CISRemediationPhase[];
+  dependencies: CISDependency[];
+}
+
+export interface CISRemediationPhase {
+  phase: number;
+  name: string;
+  description: string;
+  tasks: CISRemediationTask[];
+  startDate: string;
+  endDate: string;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+}
+
+export interface CISRemediationTask {
+  taskId: string;
+  controlId: string;
+  title: string;
+  description: string;
+  automatable: boolean;
+  estimatedTime: string;
+  difficulty: 'Low' | 'Medium' | 'High';
+  impact: 'Low' | 'Medium' | 'High';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Skipped';
+  assignedTo?: string;
+  dueDate: string;
+  prerequisites: string[];
+  validationSteps: string[];
+}
+
+export interface CISDependency {
+  taskId: string;
+  dependsOn: string[];
+  type: 'blocking' | 'soft';
+  description: string;
 }
 
 // Gap Analysis Types
