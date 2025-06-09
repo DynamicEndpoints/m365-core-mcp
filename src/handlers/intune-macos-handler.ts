@@ -131,35 +131,125 @@ export async function handleIntuneMacOSPolicies(
 
   switch (args.action) {
     case 'list':
-      // List policies based on type
+      // List policies based on type - using correct endpoints without invalid filters
       switch (args.policyType) {
         case 'Configuration':
           apiPath = '/deviceManagement/deviceConfigurations';
-          // Filter for macOS configuration policies by their OData type
-          apiPath += `?$filter=@odata.type eq 'microsoft.graph.macOSCustomConfiguration'`;
+          try {
+            const allConfigs = await graphClient.api(apiPath).get();
+            // Client-side filtering for macOS configuration policies
+            result = {
+              ...allConfigs,
+              value: allConfigs.value?.filter((config: any) => 
+                config['@odata.type'] === 'microsoft.graph.macOSCustomConfiguration' ||
+                config['@odata.type'] === 'microsoft.graph.macOSGeneralDeviceConfiguration' ||
+                config['@odata.type'] === 'microsoft.graph.macOSDeviceFeaturesConfiguration'
+              ) || []
+            };
+          } catch (error) {
+            throw new McpError(ErrorCode.InternalError, `Failed to fetch device configurations: ${error}`);
+          }
           break;
         case 'Compliance':
           apiPath = '/deviceManagement/deviceCompliancePolicies';
-          // Filter for macOS compliance policies by their OData type
-          apiPath += `?$filter=@odata.type eq 'microsoft.graph.macOSCompliancePolicy'`;
+          try {
+            const allPolicies = await graphClient.api(apiPath).get();
+            // Client-side filtering for macOS compliance policies
+            result = {
+              ...allPolicies,
+              value: allPolicies.value?.filter((policy: any) => 
+                policy['@odata.type'] === 'microsoft.graph.macOSCompliancePolicy'
+              ) || []
+            };
+          } catch (error) {
+            throw new McpError(ErrorCode.InternalError, `Failed to fetch compliance policies: ${error}`);
+          }
           break;
         case 'Security':
-          apiPath = '/deviceManagement/intents';
-          // Intents are generic and not directly filterable by platformType in the same way.
-          // Further filtering would need to be done client-side based on intent settings if applicable.
+          // Use configuration policies for security settings
+          apiPath = '/deviceManagement/configurationPolicies';
+          try {
+            const allSecurityPolicies = await graphClient.api(apiPath).get();
+            // Client-side filtering for macOS security policies
+            result = {
+              ...allSecurityPolicies,
+              value: allSecurityPolicies.value?.filter((policy: any) => 
+                policy.platforms?.includes('macOS') || 
+                policy.platforms?.includes('Mac') ||
+                policy.name?.toLowerCase().includes('macos') ||
+                policy.name?.toLowerCase().includes('mac')
+              ) || []
+            };
+          } catch (error) {
+            // Fallback to device configurations if configurationPolicies doesn't exist
+            try {
+              apiPath = '/deviceManagement/deviceConfigurations';
+              const allConfigs = await graphClient.api(apiPath).get();
+              result = {
+                ...allConfigs,
+                value: allConfigs.value?.filter((config: any) => 
+                  config['@odata.type']?.includes('macOS') && 
+                  (config.displayName?.toLowerCase().includes('security') ||
+                   config.description?.toLowerCase().includes('security'))
+                ) || []
+              };
+            } catch (fallbackError) {
+              throw new McpError(ErrorCode.InternalError, `Failed to fetch security policies: ${fallbackError}`);
+            }
+          }
           break;
         case 'Update':
-          // Correct API path for macOS software update policies
-          apiPath = '/deviceManagement/macOSSoftwareUpdatePolicies';
+          // Try multiple potential endpoints for update policies
+          try {
+            // First try the beta endpoint for software update policies
+            apiPath = '/deviceManagement/deviceConfigurations';
+            const allConfigs = await graphClient.api(apiPath).version('beta').get();
+            result = {
+              ...allConfigs,
+              value: allConfigs.value?.filter((config: any) => 
+                config['@odata.type'] === 'microsoft.graph.macOSSoftwareUpdateConfiguration' ||
+                config['@odata.type']?.includes('SoftwareUpdate') &&
+                config['@odata.type']?.includes('macOS')
+              ) || []
+            };
+          } catch (error) {
+            // Fallback to regular configurations
+            try {
+              apiPath = '/deviceManagement/deviceConfigurations';
+              const allConfigs = await graphClient.api(apiPath).get();
+              result = {
+                ...allConfigs,
+                value: allConfigs.value?.filter((config: any) => 
+                  config.displayName?.toLowerCase().includes('update') &&
+                  (config['@odata.type']?.includes('macOS') || 
+                   config.displayName?.toLowerCase().includes('macos'))
+                ) || []
+              };
+            } catch (fallbackError) {
+              throw new McpError(ErrorCode.InternalError, `Failed to fetch update policies: ${fallbackError}`);
+            }
+          }
           break;
         case 'AppProtection':
-          apiPath = '/deviceAppManagement/macOSManagedAppProtections'; // Specific for macOS app protection
+          // Try app protection policies
+          try {
+            apiPath = '/deviceAppManagement/managedAppPolicies';
+            const allAppPolicies = await graphClient.api(apiPath).get();
+            result = {
+              ...allAppPolicies,
+              value: allAppPolicies.value?.filter((policy: any) => 
+                policy['@odata.type'] === 'microsoft.graph.macOSManagedAppProtection' ||
+                (policy.displayName?.toLowerCase().includes('macos') || 
+                 policy.displayName?.toLowerCase().includes('mac'))
+              ) || []
+            };
+          } catch (error) {
+            throw new McpError(ErrorCode.InternalError, `Failed to fetch app protection policies: ${error}`);
+          }
           break;
         default:
           throw new McpError(ErrorCode.InvalidParams, `Invalid policyType: ${args.policyType}`);
       }
-      
-      result = await graphClient.api(apiPath).get();
       break;
 
     case 'get':
