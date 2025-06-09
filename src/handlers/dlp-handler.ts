@@ -13,7 +13,7 @@ export async function handleDLPPolicies(
   switch (args.action) {
     case 'list':
       // List all DLP policies
-      apiPath = '/informationProtection/policy/labels';
+      apiPath = '/beta/security/dataLossPreventionPolicies';
       result = await graphClient.api(apiPath).get();
       break;
 
@@ -21,7 +21,7 @@ export async function handleDLPPolicies(
       if (!args.policyId) {
         throw new McpError(ErrorCode.InvalidParams, 'policyId is required for get action');
       }
-      apiPath = `/informationProtection/policy/labels/${args.policyId}`;
+      apiPath = `/beta/security/dataLossPreventionPolicies/${args.policyId}`;
       result = await graphClient.api(apiPath).get();
       break;
 
@@ -29,13 +29,14 @@ export async function handleDLPPolicies(
       if (!args.name) {
         throw new McpError(ErrorCode.InvalidParams, 'name is required for create action');
       }
-      apiPath = '/informationProtection/policy/labels';
+      apiPath = '/beta/security/dataLossPreventionPolicies';
       const createPayload = {
-        name: args.name,
+        displayName: args.name,
         description: args.description || '',
-        isActive: args.settings?.enabled ?? true,
-        priority: args.settings?.priority ?? 0,
-        toolTip: args.description || args.name
+        status: args.settings?.enabled ? 'enabled' : 'disabled',
+        // locations: args.locations, // Locations are part of rules, not top-level policy
+        // mode: args.settings?.mode, // Mode is also part of rules
+        // priority: args.settings?.priority, // Priority is also part of rules
       };
       result = await graphClient.api(apiPath).post(createPayload);
       break;
@@ -44,12 +45,11 @@ export async function handleDLPPolicies(
       if (!args.policyId) {
         throw new McpError(ErrorCode.InvalidParams, 'policyId is required for update action');
       }
-      apiPath = `/informationProtection/policy/labels/${args.policyId}`;
+      apiPath = `/beta/security/dataLossPreventionPolicies/${args.policyId}`;
       const updatePayload = {
-        name: args.name,
+        displayName: args.name,
         description: args.description,
-        isActive: args.settings?.enabled,
-        priority: args.settings?.priority
+        status: args.settings?.enabled ? 'enabled' : 'disabled',
       };
       result = await graphClient.api(apiPath).patch(updatePayload);
       break;
@@ -58,7 +58,7 @@ export async function handleDLPPolicies(
       if (!args.policyId) {
         throw new McpError(ErrorCode.InvalidParams, 'policyId is required for delete action');
       }
-      apiPath = `/informationProtection/policy/labels/${args.policyId}`;
+      apiPath = `/beta/security/dataLossPreventionPolicies/${args.policyId}`;
       await graphClient.api(apiPath).delete();
       result = { message: 'DLP policy deleted successfully' };
       break;

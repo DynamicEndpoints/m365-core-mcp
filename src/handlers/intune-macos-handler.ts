@@ -135,9 +135,13 @@ export async function handleIntuneMacOSPolicies(
       switch (args.policyType) {
         case 'Configuration':
           apiPath = '/deviceManagement/deviceConfigurations';
+          // Filter for macOS configuration policies by their OData type
+          apiPath += `?$filter=odata.type eq '#microsoft.graph.macOSCustomConfiguration'`;
           break;
         case 'Compliance':
           apiPath = '/deviceManagement/deviceCompliancePolicies';
+          // Filter for macOS compliance policies by their OData type
+          apiPath += `?$filter=odata.type eq '#microsoft.graph.macOSCompliancePolicy'`;
           break;
         case 'Security':
           apiPath = '/deviceManagement/intents';
@@ -152,8 +156,6 @@ export async function handleIntuneMacOSPolicies(
           throw new McpError(ErrorCode.InvalidParams, `Invalid policyType: ${args.policyType}`);
       }
       
-      // Filter for macOS policies
-      apiPath += `?$filter=platformType eq 'macOS'`;
       result = await graphClient.api(apiPath).get();
       break;
 
