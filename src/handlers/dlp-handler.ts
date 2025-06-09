@@ -90,18 +90,18 @@ export async function handleDLPIncidents(
     case 'list':
       // List DLP incidents from security events
       apiPath = '/security/alerts_v2';
-      const queryOptions: string[] = [];
+      const filterConditions: string[] = [];
       
       if (args.dateRange) {
-        queryOptions.push(`$filter=createdDateTime ge ${args.dateRange.startDate} and createdDateTime le ${args.dateRange.endDate}`);
+        filterConditions.push(`createdDateTime ge ${args.dateRange.startDate} and createdDateTime le ${args.dateRange.endDate}`);
       }
       
       if (args.severity) {
-        queryOptions.push(`$filter=severity eq '${args.severity}'`);
+        filterConditions.push(`severity eq '${args.severity}'`);
       }
 
-      if (queryOptions.length > 0) {
-        apiPath += `?${queryOptions.join('&')}`;
+      if (filterConditions.length > 0) {
+        apiPath += `?$filter=${filterConditions.join(' and ')}`;
       }
 
       result = await graphClient.api(apiPath).get();
