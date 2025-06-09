@@ -145,12 +145,15 @@ export async function handleIntuneMacOSPolicies(
           break;
         case 'Security':
           apiPath = '/deviceManagement/intents';
+          // Intents are generic and not directly filterable by platformType in the same way.
+          // Further filtering would need to be done client-side based on intent settings if applicable.
           break;
         case 'Update':
-          apiPath = '/deviceManagement/softwareUpdateStatusSummary';
+          // Correct API path for macOS software update policies
+          apiPath = '/deviceManagement/macOSSoftwareUpdatePolicies';
           break;
         case 'AppProtection':
-          apiPath = '/deviceAppManagement/managedAppPolicies';
+          apiPath = '/deviceAppManagement/macOSManagedAppProtections'; // Specific for macOS app protection
           break;
         default:
           throw new McpError(ErrorCode.InvalidParams, `Invalid policyType: ${args.policyType}`);
@@ -173,6 +176,12 @@ export async function handleIntuneMacOSPolicies(
           break;
         case 'Security':
           apiPath = `/deviceManagement/intents/${args.policyId}`;
+          break;
+        case 'Update':
+          apiPath = `/deviceManagement/macOSSoftwareUpdatePolicies/${args.policyId}`;
+          break;
+        case 'AppProtection':
+          apiPath = `/deviceAppManagement/macOSManagedAppProtections/${args.policyId}`;
           break;
         default:
           throw new McpError(ErrorCode.InvalidParams, `Get operation not supported for policyType: ${args.policyType}`);
