@@ -136,35 +136,174 @@ export async function handleIntuneMacOSPolicies(
         case 'Configuration':
           apiPath = '/deviceManagement/deviceConfigurations';
           try {
-            const allConfigs = await graphClient.api(apiPath).get();
-            // Client-side filtering for macOS configuration policies
-            result = {
-              ...allConfigs,
-              value: allConfigs.value?.filter((config: any) => 
-                config['@odata.type'] === 'microsoft.graph.macOSCustomConfiguration' ||
-                config['@odata.type'] === 'microsoft.graph.macOSGeneralDeviceConfiguration' ||
-                config['@odata.type'] === 'microsoft.graph.macOSDeviceFeaturesConfiguration'
-              ) || []
-            };
+            // First try with beta endpoint for more comprehensive results
+            try {
+              const allConfigs = await graphClient.api(apiPath).version('beta').get();
+              // Improved client-side filtering for macOS configuration policies
+              const macOSPolicies = allConfigs.value?.filter((config: any) => {
+                // Check for known macOS odata types
+                if (config['@odata.type'] && (
+                    config['@odata.type'].includes('macOS') || 
+                    config['@odata.type'] === '#microsoft.graph.macOSCustomConfiguration' ||
+                    config['@odata.type'] === '#microsoft.graph.macOSGeneralDeviceConfiguration' ||
+                    config['@odata.type'] === '#microsoft.graph.macOSDeviceFeaturesConfiguration' ||
+                    config['@odata.type'] === '#microsoft.graph.macOSEndpointProtectionConfiguration'
+                  )) {
+                  return true;
+                }
+                
+                // Check display name and description for macOS indicators
+                if ((config.displayName && (
+                    config.displayName.toLowerCase().includes('mac') || 
+                    config.displayName.toLowerCase().includes('macos'))) ||
+                    (config.description && (
+                    config.description.toLowerCase().includes('mac') || 
+                    config.description.toLowerCase().includes('macos')))) {
+                  return true;
+                }
+                
+                return false;
+              }) || [];
+              
+              result = {
+                ...allConfigs,
+                value: macOSPolicies
+              };
+            } catch (betaError) {
+              // Fall back to v1.0 endpoint if beta fails
+              console.log(`Beta API failed, falling back to v1.0: ${betaError}`);
+              const allConfigs = await graphClient.api(apiPath).get();
+              
+              // Same improved filtering logic for v1.0
+              const macOSPolicies = allConfigs.value?.filter((config: any) => {
+                // Check for known macOS odata types
+                if (config['@odata.type'] && (
+                    config['@odata.type'].includes('macOS') || 
+                    config['@odata.type'] === '#microsoft.graph.macOSCustomConfiguration' ||
+                    config['@odata.type'] === '#microsoft.graph.macOSGeneralDeviceConfiguration' ||
+                    config['@odata.type'] === '#microsoft.graph.macOSDeviceFeaturesConfiguration'
+                  )) {
+                  return true;
+                }
+                
+                // Check display name and description for macOS indicators
+                if ((config.displayName && (
+                    config.displayName.toLowerCase().includes('mac') || 
+                    config.displayName.toLowerCase().includes('macos'))) ||
+                    (config.description && (
+                    config.description.toLowerCase().includes('mac') || 
+                    config.description.toLowerCase().includes('macos')))) {
+                  return true;
+                }
+                
+                return false;
+              }) || [];
+              
+              result = {
+                ...allConfigs,
+                value: macOSPolicies
+              };
+            }
+            
+            // If no policies found, check configuration profiles endpoint as fallback
+            if (result.value.length === 0) {
+              try {
+                apiPath = '/deviceManagement/configurationPolicies';
+                const configProfiles = await graphClient.api(apiPath).version('beta').get();
+                
+                const macOSProfiles = configProfiles.value?.filter((profile: any) => 
+                  profile.platforms?.includes('macOS') || 
+                  profile.platforms?.includes('Mac') ||
+                  (profile.name && (
+                    profile.name.toLowerCase().includes('mac') || 
+                    profile.name.toLowerCase().includes('macos')))
+                ) || [];
+                
+                result = {
+                  ...configProfiles,
+                  value: macOSProfiles
+                };
+              } catch (profilesError) {
+                console.log(`Configuration profiles endpoint failed: ${profilesError}`);
+                // Keep the empty result from deviceConfigurations
+              }
+            }
           } catch (error) {
             throw new McpError(ErrorCode.InternalError, `Failed to fetch device configurations: ${error}`);
           }
           break;
+          
         case 'Compliance':
           apiPath = '/deviceManagement/deviceCompliancePolicies';
           try {
-            const allPolicies = await graphClient.api(apiPath).get();
-            // Client-side filtering for macOS compliance policies
-            result = {
-              ...allPolicies,
-              value: allPolicies.value?.filter((policy: any) => 
-                policy['@odata.type'] === 'microsoft.graph.macOSCompliancePolicy'
-              ) || []
-            };
+            // First try with beta endpoint for more comprehensive results
+            try {
+              const allPolicies = await graphClient.api(apiPath).version('beta').get();
+              // Improved client-side filtering for macOS compliance policies
+              const macOSPolicies = allPolicies.value?.filter((policy: any) => {
+                // Check for known macOS odata types
+                if (policy['@odata.type'] && (
+                    policy['@odata.type'].includes('macOS') || 
+                    policy['@odata.type'] === '#microsoft.graph.macOSCompliancePolicy'
+                  )) {
+                  return true;
+                }
+                
+                // Check display name and description for macOS indicators
+                if ((policy.displayName && (
+                    policy.displayName.toLowerCase().includes('mac') || 
+                    policy.displayName.toLowerCase().includes('macos'))) ||
+                    (policy.description && (
+                    policy.description.toLowerCase().includes('mac') || 
+                    policy.description.toLowerCase().includes('macos')))) {
+                  return true;
+                }
+                
+                return false;
+              }) || [];
+              
+              result = {
+                ...allPolicies,
+                value: macOSPolicies
+              };
+            } catch (betaError) {
+              // Fall back to v1.0 endpoint if beta fails
+              console.log(`Beta API failed, falling back to v1.0: ${betaError}`);
+              const allPolicies = await graphClient.api(apiPath).get();
+              
+              // Same improved filtering logic for v1.0
+              const macOSPolicies = allPolicies.value?.filter((policy: any) => {
+                // Check for known macOS odata types
+                if (policy['@odata.type'] && (
+                    policy['@odata.type'].includes('macOS') || 
+                    policy['@odata.type'] === '#microsoft.graph.macOSCompliancePolicy'
+                  )) {
+                  return true;
+                }
+                
+                // Check display name and description for macOS indicators
+                if ((policy.displayName && (
+                    policy.displayName.toLowerCase().includes('mac') || 
+                    policy.displayName.toLowerCase().includes('macos'))) ||
+                    (policy.description && (
+                    policy.description.toLowerCase().includes('mac') || 
+                    policy.description.toLowerCase().includes('macos')))) {
+                  return true;
+                }
+                
+                return false;
+              }) || [];
+              
+              result = {
+                ...allPolicies,
+                value: macOSPolicies
+              };
+            }
           } catch (error) {
             throw new McpError(ErrorCode.InternalError, `Failed to fetch compliance policies: ${error}`);
           }
           break;
+          
         case 'Security':
           // Use configuration policies for security settings
           apiPath = '/deviceManagement/configurationPolicies';
@@ -198,6 +337,7 @@ export async function handleIntuneMacOSPolicies(
             }
           }
           break;
+          
         case 'Update':
           // Try multiple potential endpoints for update policies
           try {
@@ -230,6 +370,7 @@ export async function handleIntuneMacOSPolicies(
             }
           }
           break;
+          
         case 'AppProtection':
           // Try app protection policies
           try {
@@ -247,6 +388,7 @@ export async function handleIntuneMacOSPolicies(
             throw new McpError(ErrorCode.InternalError, `Failed to fetch app protection policies: ${error}`);
           }
           break;
+          
         default:
           throw new McpError(ErrorCode.InvalidParams, `Invalid policyType: ${args.policyType}`);
       }
