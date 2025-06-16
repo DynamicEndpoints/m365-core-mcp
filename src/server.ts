@@ -576,6 +576,285 @@ export class M365CoreServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );        }
+      })
+    );
+
+    // DLP Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_dlp_policies",
+      dlpPolicySchema.shape,
+      wrapToolHandler(async (args: DLPPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleDLPPolicies(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // DLP Incident Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_dlp_incidents",
+      dlpIncidentSchema.shape,
+      wrapToolHandler(async (args: DLPIncidentArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleDLPIncidents(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Sensitivity Label Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_sensitivity_labels",
+      sensitivityLabelSchema.shape,
+      wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleDLPSensitivityLabels(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune macOS Device Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_intune_macos_devices",
+      intuneMacOSDeviceSchema.shape,
+      wrapToolHandler(async (args: IntuneMacOSDeviceArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneMacOSDevices(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune macOS Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_intune_macos_policies",
+      intuneMacOSPolicySchema.shape,
+      wrapToolHandler(async (args: IntuneMacOSPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneMacOSPolicies(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune macOS App Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_intune_macos_apps",
+      intuneMacOSAppSchema.shape,
+      wrapToolHandler(async (args: IntuneMacOSAppArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneMacOSApps(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune macOS Compliance Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_intune_macos_compliance",
+      intuneMacOSComplianceSchema.shape,
+      wrapToolHandler(async (args: IntuneMacOSComplianceArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneMacOSCompliance(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Compliance Framework Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_compliance_frameworks",
+      complianceFrameworkSchema.shape,
+      wrapToolHandler(async (args: ComplianceFrameworkArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleComplianceFrameworks(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Compliance Assessment Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_compliance_assessments",
+      complianceAssessmentSchema.shape,
+      wrapToolHandler(async (args: ComplianceAssessmentArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleComplianceAssessments(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Compliance Monitoring - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_compliance_monitoring",
+      complianceMonitoringSchema.shape,
+      wrapToolHandler(async (args: ComplianceMonitoringArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleComplianceMonitoring(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Evidence Collection - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_evidence_collection",
+      evidenceCollectionSchema.shape,
+      wrapToolHandler(async (args: EvidenceCollectionArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleEvidenceCollection(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Gap Analysis - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_gap_analysis",
+      gapAnalysisSchema.shape,
+      wrapToolHandler(async (args: GapAnalysisArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleGapAnalysis(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Audit Reports - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "generate_audit_reports",
+      auditReportSchema.shape,
+      wrapToolHandler(async (args: AuditReportArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleAuditReports(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // CIS Compliance - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_cis_compliance",
+      cisComplianceSchema.shape,
+      wrapToolHandler(async (args: CISComplianceArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleCISCompliance(this.graphClient, args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })

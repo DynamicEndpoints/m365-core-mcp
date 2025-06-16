@@ -188,21 +188,48 @@ export const alertSchema = z.object({
 
 // DLP Policy Management
 export const dlpPolicySchema = z.object({
-  action: z.enum(['list', 'get', 'create', 'update', 'delete']).describe('DLP policy management action'),
+  action: z.enum(['list', 'get', 'create', 'update', 'delete', 'test']).describe('DLP policy management action'),
   policyId: z.string().optional().describe('DLP policy ID'),
   name: z.string().optional().describe('Policy name'),
   description: z.string().optional().describe('Policy description'),
-  mode: z.enum(['Test', 'TestWithoutNotifications', 'Enforce']).optional().describe('Policy mode'),
-  locations: z.array(z.string()).optional().describe('Policy locations (Exchange, SharePoint, OneDrive, etc.)'),
-  rules: z.array(z.record(z.any())).optional().describe('Policy rules configuration'),
+  locations: z.array(z.enum(['Exchange', 'SharePoint', 'OneDrive', 'Teams', 'Endpoint'])).optional().describe('Policy locations'),  rules: z.array(z.object({
+    name: z.string().describe('Rule name'),
+    conditions: z.array(z.object({
+      type: z.enum(['ContentContains', 'SensitiveInfoType', 'DocumentProperty', 'MessageProperty']).describe('Condition type'),
+      value: z.string().describe('Condition value'),
+      operator: z.enum(['Equals', 'Contains', 'StartsWith', 'EndsWith', 'RegexMatch']).optional().describe('Condition operator'),
+      caseSensitive: z.boolean().optional().describe('Case sensitive matching'),
+    })).describe('Rule conditions'),
+    actions: z.array(z.object({
+      type: z.enum(['Block', 'BlockWithOverride', 'Notify', 'Audit', 'Quarantine']).describe('Action type'),
+      settings: z.object({
+        notificationMessage: z.string().optional().describe('Notification message'),
+        blockMessage: z.string().optional().describe('Block message'),
+        allowOverride: z.boolean().optional().describe('Allow override'),
+        overrideJustificationRequired: z.boolean().optional().describe('Override justification required'),
+      }).optional().describe('Action settings'),
+    })).describe('Rule actions'),
+    enabled: z.boolean().optional().describe('Whether rule is enabled'),
+    priority: z.number().optional().describe('Rule priority'),
+  })).optional().describe('Policy rules configuration'),
+  settings: z.object({
+    mode: z.enum(['Test', 'TestWithNotifications', 'Enforce']).optional().describe('Policy mode'),
+    priority: z.number().optional().describe('Policy priority'),
+    enabled: z.boolean().optional().describe('Whether policy is enabled'),
+  }).optional().describe('Policy settings'),
 });
 
 // DLP Incident Management
 export const dlpIncidentSchema = z.object({
-  action: z.enum(['list', 'get', 'update']).describe('DLP incident management action'),
+  action: z.enum(['list', 'get', 'resolve', 'escalate']).describe('DLP incident management action'),
   incidentId: z.string().optional().describe('DLP incident ID'),
-  status: z.enum(['Active', 'Resolved', 'Dismissed']).optional().describe('Incident status'),
-  filter: z.string().optional().describe('Filter criteria'),
+  dateRange: z.object({
+    startDate: z.string().describe('Start date'),
+    endDate: z.string().describe('End date'),
+  }).optional().describe('Date range filter'),
+  severity: z.enum(['Low', 'Medium', 'High', 'Critical']).optional().describe('Incident severity'),
+  status: z.enum(['Active', 'Resolved', 'InProgress', 'Dismissed']).optional().describe('Incident status'),
+  policyId: z.string().optional().describe('Associated policy ID'),
 });
 
 // Sensitivity Label Management
@@ -217,18 +244,39 @@ export const sensitivityLabelSchema = z.object({
 
 // Intune macOS Management
 export const intuneMacOSDeviceSchema = z.object({
-  action: z.enum(['list', 'get', 'sync', 'wipe', 'retire']).describe('Intune macOS device management action'),
+  action: z.enum(['list', 'get', 'enroll', 'retire', 'wipe', 'restart', 'sync', 'remote_lock', 'collect_logs']).describe('Intune macOS device management action'),
   deviceId: z.string().optional().describe('Device ID for device-specific operations'),
   filter: z.string().optional().describe('OData filter for device listing'),
+  enrollmentType: z.enum(['UserEnrollment', 'DeviceEnrollment', 'AutomaticDeviceEnrollment']).optional().describe('Enrollment type'),
+  assignmentTarget: z.object({
+    groupIds: z.array(z.string()).optional().describe('Target group IDs'),
+    userIds: z.array(z.string()).optional().describe('Target user IDs'),
+    deviceIds: z.array(z.string()).optional().describe('Target device IDs'),
+  }).optional().describe('Assignment target'),
 });
 
 export const intuneMacOSPolicySchema = z.object({
-  action: z.enum(['list', 'get', 'create', 'update', 'delete', 'assign']).describe('Intune macOS policy management action'),
+  action: z.enum(['list', 'get', 'create', 'update', 'delete', 'assign', 'deploy']).describe('Intune macOS policy management action'),
   policyId: z.string().optional().describe('Policy ID for policy-specific operations'),
-  policyType: z.enum(['configuration', 'compliance', 'security']).optional().describe('Type of macOS policy'),
+  policyType: z.enum(['Configuration', 'Compliance', 'Security', 'Update', 'AppProtection']).describe('Type of macOS policy'),
   name: z.string().optional().describe('Policy name'),
+  description: z.string().optional().describe('Policy description'),
   settings: z.record(z.any()).optional().describe('Policy configuration settings'),
-  assignments: z.array(z.string()).optional().describe('Group IDs for policy assignment'),
+  assignments: z.array(z.object({
+    target: z.object({
+      deviceAndAppManagementAssignmentFilterId: z.string().optional().describe('Filter ID'),
+      deviceAndAppManagementAssignmentFilterType: z.enum(['none', 'include', 'exclude']).optional().describe('Filter type'),
+      groupId: z.string().optional().describe('Group ID'),
+      collectionId: z.string().optional().describe('Collection ID'),
+    }).describe('Assignment target'),
+    intent: z.enum(['apply', 'remove']).optional().describe('Assignment intent'),
+    settings: z.record(z.any()).optional().describe('Assignment settings'),
+  })).optional().describe('Policy assignments'),
+  deploymentSettings: z.object({
+    installBehavior: z.enum(['doNotInstall', 'installAsManaged', 'installAsUnmanaged']).optional().describe('Install behavior'),
+    uninstallOnDeviceRemoval: z.boolean().optional().describe('Uninstall on device removal'),
+    installAsManaged: z.boolean().optional().describe('Install as managed'),
+  }).optional().describe('Deployment settings'),
 });
 
 export const intuneMacOSAppSchema = z.object({
@@ -241,7 +289,7 @@ export const intuneMacOSAppSchema = z.object({
 });
 
 export const intuneMacOSComplianceSchema = z.object({
-  action: z.enum(['assess', 'report', 'remediate']).describe('Intune macOS compliance action'),
+  action: z.enum(['get_status', 'get_details', 'update_policy', 'force_evaluation']).describe('Intune macOS compliance action'),
   deviceId: z.string().optional().describe('Device ID for compliance assessment'),
   complianceType: z.enum(['security', 'configuration', 'update']).optional().describe('Type of compliance check'),
   policies: z.array(z.string()).optional().describe('Specific policy IDs to assess'),
@@ -249,29 +297,29 @@ export const intuneMacOSComplianceSchema = z.object({
 
 // Compliance Framework Management
 export const complianceFrameworkSchema = z.object({
-  action: z.enum(['list', 'get', 'assess', 'report']).describe('Compliance framework management action'),
-  framework: z.enum(['SOC2', 'ISO27001', 'NIST', 'CIS', 'PCI-DSS', 'HIPAA']).optional().describe('Compliance framework type'),
-  scope: z.string().optional().describe('Assessment scope (organization, specific systems)'),
-  includeEvidence: z.boolean().optional().describe('Include compliance evidence in reports'),
+  action: z.enum(['list', 'configure', 'status', 'assess', 'activate', 'deactivate']).describe('Compliance framework management action'),
+  framework: z.enum(['hitrust', 'iso27001', 'soc2', 'cis']).describe('Compliance framework type'),
+  scope: z.array(z.string()).optional().describe('Assessment scope (organization, specific systems)'),
+  settings: z.record(z.unknown()).optional().describe('Framework settings'),
 });
 
 export const complianceAssessmentSchema = z.object({
-  action: z.enum(['start', 'status', 'results', 'export']).describe('Compliance assessment action'),
+  action: z.enum(['create', 'update', 'execute', 'schedule', 'cancel', 'get_results']).describe('Compliance assessment action'),
   assessmentId: z.string().optional().describe('Assessment ID for tracking'),
-  framework: z.enum(['SOC2', 'ISO27001', 'NIST', 'CIS', 'PCI-DSS', 'HIPAA']).describe('Framework to assess against'),
-  scope: z.array(z.string()).optional().describe('Systems or services to include in assessment'),
-  automated: z.boolean().optional().describe('Whether to run automated checks'),
+  framework: z.enum(['hitrust', 'iso27001', 'soc2']).describe('Framework to assess against'),
+  scope: z.record(z.unknown()).describe('Assessment scope'),
+  settings: z.record(z.unknown()).optional().describe('Assessment settings'),
 });
 
 export const complianceMonitoringSchema = z.object({
-  action: z.enum(['setup', 'status', 'alerts', 'report']).describe('Compliance monitoring action'),
-  framework: z.enum(['SOC2', 'ISO27001', 'NIST', 'CIS', 'PCI-DSS', 'HIPAA']).describe('Framework to monitor'),
-  frequency: z.enum(['daily', 'weekly', 'monthly']).optional().describe('Monitoring frequency'),
-  alertThreshold: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Alert threshold level'),
+  action: z.enum(['get_status', 'get_alerts', 'get_trends', 'configure_monitoring']).describe('Compliance monitoring action'),
+  framework: z.enum(['hitrust', 'iso27001', 'soc2']).optional().describe('Framework to monitor'),
+  filters: z.record(z.unknown()).optional().describe('Monitoring filters'),
+  monitoringSettings: z.record(z.unknown()).optional().describe('Monitoring settings'),
 });
 
 export const evidenceCollectionSchema = z.object({
-  action: z.enum(['collect', 'list', 'export', 'validate']).describe('Evidence collection action'),
+  action: z.enum(['get_status', 'schedule', 'collect', 'download']).describe('Evidence collection action'),
   evidenceType: z.enum(['configuration', 'logs', 'policies', 'certificates', 'reports']).optional().describe('Type of evidence to collect'),
   timeRange: z.object({
     start: z.string().describe('Start date (ISO format)'),
@@ -281,29 +329,58 @@ export const evidenceCollectionSchema = z.object({
 });
 
 export const gapAnalysisSchema = z.object({
-  action: z.enum(['analyze', 'report', 'recommendations']).describe('Gap analysis action'),
-  framework: z.enum(['SOC2', 'ISO27001', 'NIST', 'CIS', 'PCI-DSS', 'HIPAA']).describe('Framework for gap analysis'),
-  currentState: z.record(z.any()).optional().describe('Current compliance state data'),
-  targetState: z.enum(['basic', 'intermediate', 'advanced']).optional().describe('Target compliance level'),
+  action: z.enum(['generate', 'get_results', 'export']).describe('Gap analysis action'),
+  analysisId: z.string().optional().describe('Analysis ID'),
+  framework: z.enum(['hitrust', 'iso27001', 'soc2']).describe('Framework for gap analysis'),
+  targetFramework: z.enum(['hitrust', 'iso27001', 'soc2']).optional().describe('Target framework for cross-framework mapping'),
+  scope: z.object({
+    controlIds: z.array(z.string()).optional().describe('Control IDs'),
+    categories: z.array(z.string()).optional().describe('Categories'),
+  }).optional().describe('Analysis scope'),
+  settings: z.object({
+    includeRecommendations: z.boolean().describe('Include recommendations'),
+    prioritizeByRisk: z.boolean().describe('Prioritize by risk'),
+    includeTimeline: z.boolean().describe('Include timeline'),
+    includeCostEstimate: z.boolean().describe('Include cost estimate'),
+  }).optional().describe('Analysis settings'),
 });
 
 export const auditReportSchema = z.object({
-  action: z.enum(['generate', 'schedule', 'list', 'export']).describe('Audit report action'),
-  reportType: z.enum(['compliance', 'security', 'activity', 'configuration']).describe('Type of audit report'),
-  timeRange: z.object({
-    start: z.string().describe('Start date (ISO format)'),
-    end: z.string().describe('End date (ISO format)'),
-  }).optional().describe('Report time range'),
-  format: z.enum(['pdf', 'xlsx', 'csv', 'json']).optional().describe('Report output format'),
-  includeEvidence: z.boolean().optional().describe('Include supporting evidence'),
+  framework: z.enum(['hitrust', 'iso27001', 'soc2', 'cis']).describe('Compliance framework'),
+  reportType: z.enum(['full', 'summary', 'gaps', 'evidence', 'executive', 'control_matrix', 'risk_assessment']).describe('Type of audit report'),
+  dateRange: z.object({
+    startDate: z.string().describe('Start date (ISO format)'),
+    endDate: z.string().describe('End date (ISO format)'),
+  }).describe('Report time range'),
+  format: z.enum(['csv', 'html', 'pdf', 'xlsx']).describe('Report output format'),
+  includeEvidence: z.boolean().describe('Include supporting evidence'),
+  outputPath: z.string().optional().describe('Output file path'),
+  customTemplate: z.string().optional().describe('Custom template path'),
+  filters: z.object({
+    controlIds: z.array(z.string()).optional().describe('Specific control IDs'),
+    riskLevels: z.array(z.enum(['low', 'medium', 'high', 'critical'])).optional().describe('Risk levels to include'),
+    implementationStatus: z.array(z.enum(['implemented', 'partiallyImplemented', 'notImplemented', 'notApplicable'])).optional().describe('Implementation status filter'),
+    testingStatus: z.array(z.enum(['passed', 'failed', 'notTested', 'inProgress'])).optional().describe('Testing status filter'),
+    owners: z.array(z.string()).optional().describe('Control owners'),
+  }).optional().describe('Report filters'),
 });
 
 export const cisComplianceSchema = z.object({
-  action: z.enum(['assess', 'report', 'remediate', 'monitor']).describe('CIS compliance action'),
-  benchmark: z.enum(['Windows', 'macOS', 'Linux', 'Azure', 'M365']).describe('CIS benchmark to assess'),
-  level: z.enum(['Level1', 'Level2']).optional().describe('CIS benchmark level'),
-  systems: z.array(z.string()).optional().describe('Target systems for assessment'),
-  autoRemediate: z.boolean().optional().describe('Automatically remediate findings'),
+  action: z.enum(['assess', 'get_benchmark', 'generate_report', 'configure_monitoring', 'remediate']).describe('CIS compliance action'),
+  benchmark: z.enum(['windows-10', 'windows-11', 'windows-server-2019', 'windows-server-2022', 'office365', 'azure', 'intune']).optional().describe('CIS benchmark to assess'),
+  implementationGroup: z.enum(['1', '2', '3']).optional().describe('Implementation group'),
+  controlIds: z.array(z.string()).optional().describe('Specific control IDs'),
+  scope: z.object({
+    devices: z.array(z.string()).optional().describe('Target devices'),
+    users: z.array(z.string()).optional().describe('Target users'),
+    policies: z.array(z.string()).optional().describe('Target policies'),
+  }).optional().describe('Assessment scope'),
+  settings: z.object({
+    automated: z.boolean().optional().describe('Automated assessment'),
+    generateRemediation: z.boolean().optional().describe('Generate remediation plans'),
+    includeEvidence: z.boolean().optional().describe('Include evidence'),
+    riskPrioritization: z.boolean().optional().describe('Risk-based prioritization'),
+  }).optional().describe('Assessment settings'),
 });
 
 // Core M365 Tools Collection
