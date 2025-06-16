@@ -246,16 +246,35 @@ export class M365CoreServer {
     }
 
     // Cache the new token with expiration time (expires_in is in seconds)
-    const expiresOn = now + data.expires_in * 1000;
-    this.tokenCache.set(scope, { token: data.access_token, expiresOn });
+    const expiresOn = now + data.expires_in * 1000;    this.tokenCache.set(scope, { token: data.access_token, expiresOn });
 
     return data.access_token;
-  }  private setupTools(): void {
-    // Distribution Lists
+  }
+
+  private validateCredentials(): void {
+    const requiredEnvVars = ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Missing required environment variables for Microsoft 365 authentication: ${missingVars.join(', ')}. ` +
+        `Please configure these variables:\n` +
+        `- MS_TENANT_ID: Your Azure AD tenant ID\n` +
+        `- MS_CLIENT_ID: Your Azure AD application (client) ID\n` +
+        `- MS_CLIENT_SECRET: Your Azure AD application client secret\n\n` +
+        `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
+      );
+    }
+  }
+  private setupTools(): void {
+    // Distribution Lists - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_distribution_lists",
       distributionListSchema,
       wrapToolHandler(async (args: DistributionListArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await this.handleDistributionList(args);
         } catch (error) {
@@ -270,11 +289,13 @@ export class M365CoreServer {
       })
     );
 
-    // Security Groups
+    // Security Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_security_groups",
       securityGroupSchema,
       wrapToolHandler(async (args: SecurityGroupArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await this.handleSecurityGroup(args);
         } catch (error) {
