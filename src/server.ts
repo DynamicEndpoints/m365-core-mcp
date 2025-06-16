@@ -308,13 +308,13 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // M365 Groups
+    );    // M365 Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_m365_groups",
       m365GroupSchema,
       wrapToolHandler(async (args: M365GroupArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await this.handleM365Group(args);
         } catch (error) {
@@ -329,11 +329,13 @@ export class M365CoreServer {
       })
     );
 
-    // Exchange Settings
+    // Exchange Settings - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_exchange_settings",
       exchangeSettingsSchema,
       wrapToolHandler(async (args: ExchangeSettingsArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleExchangeSettings(this.graphClient, args);
         } catch (error) {
@@ -348,11 +350,13 @@ export class M365CoreServer {
       })
     );
 
-    // User Management
+    // User Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_user_settings",
       userManagementSchema,
       wrapToolHandler(async (args: UserManagementArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleUserSettings(this.graphClient, args);
         } catch (error) {
@@ -367,11 +371,13 @@ export class M365CoreServer {
       })
     );
 
-    // Offboarding
+    // Offboarding - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_offboarding",
       offboardingSchema,
       wrapToolHandler(async (args: OffboardingArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleOffboarding(this.graphClient, args);
         } catch (error) {
