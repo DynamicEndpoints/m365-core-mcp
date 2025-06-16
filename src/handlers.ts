@@ -911,3 +911,65 @@ export async function handleManageAlerts(
 
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
+
+// Placeholder implementations for missing handlers
+export async function handleDistributionLists(
+  graphClient: Client,
+  args: any
+): Promise<any> {
+  // TODO: Implement distribution list management
+  return {
+    content: [
+      {
+        type: 'text',
+        text: 'Distribution list management not yet implemented'
+      }
+    ]
+  };
+}
+
+export async function handleSecurityGroups(
+  graphClient: Client,
+  args: any
+): Promise<any> {
+  // TODO: Implement security group management
+  return {
+    content: [
+      {
+        type: 'text',
+        text: 'Security group management not yet implemented'
+      }
+    ]
+  };
+}
+
+export async function handleM365Groups(
+  graphClient: Client,
+  args: any
+): Promise<any> {
+  // TODO: Implement M365 group management
+  return {
+    content: [
+      {
+        type: 'text',
+        text: 'M365 group management not yet implemented'
+      }
+    ]
+  };
+}
+
+export async function handleSharePointSites(
+  graphClient: Client,
+  args: any
+): Promise<any> {
+  // TODO: Implement SharePoint site management - delegate to handleSharePointSite
+  return await handleSharePointSite(graphClient, args);
+}
+
+export async function handleSharePointLists(
+  graphClient: Client,
+  args: any
+): Promise<any> {
+  // TODO: Implement SharePoint list management - delegate to handleSharePointList
+  return await handleSharePointList(graphClient, args);
+}

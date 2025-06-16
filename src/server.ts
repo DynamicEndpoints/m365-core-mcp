@@ -66,6 +66,11 @@ import {
 } from './tool-definitions.js';
 
 import {
+  handleDistributionLists,
+  handleSecurityGroups,
+  handleM365Groups,
+  handleSharePointSites,
+  handleSharePointLists,
   handleUserSettings,
   handleOffboarding,
   handleSharePointSite,
@@ -128,18 +133,15 @@ import { handleAuditReports } from './handlers/audit-reporting-handler.js';
 import { AuditReportArgs } from './types/compliance-types.js';
 
 import { handleExchangeSettings } from './exchange-handler.js';
-import { setupExtendedResources, setupExtendedPrompts } from './extended-resources.js';
 
-// Environment validation
+// Environment validation - will be checked lazily when tools are executed
 const MS_TENANT_ID = process.env.MS_TENANT_ID ?? '';
 const MS_CLIENT_ID = process.env.MS_CLIENT_ID ?? '';
 const MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET ?? '';
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 
-if (!MS_TENANT_ID || !MS_CLIENT_ID || !MS_CLIENT_SECRET) {
-  throw new Error('Required environment variables (MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET) are missing');
-}
+// Note: Don't validate credentials here - do it lazily when tools are executed
 
 // Define API configurations
 const apiConfigs = {
@@ -155,73 +157,52 @@ const apiConfigs = {
 
 export class M365CoreServer {
   public server: McpServer;
-  private graphClient: Client;
+  private graphClient: Client | null = null; // Make this nullable and initialize lazily
   // Cache for tokens based on scope
   private tokenCache: Map<string, { token: string; expiresOn: number }> = new Map();
     // SSE and real-time capabilities
   public sseClients: Set<any> = new Set();
-  public progressTrackers: Map<string, any> = new Map();
-
-  constructor() {
+  public progressTrackers: Map<string, any> = new Map();  constructor() {
     this.server = new McpServer({
       name: 'm365-core-server',
       version: '1.0.0',
-      // Enable all modern MCP capabilities
       capabilities: {
         tools: {},
         resources: {
-          subscribe: true, // Enable resource subscriptions for real-time updates
+          subscribe: true,
           listChanged: true
         },
         prompts: {},
-        logging: {},
-        // Enable progress reporting for long-running operations
-        experimental: {
-          progressReporting: true,
-          streamingResponses: true
-        }
+        logging: {}
       }
     });
 
-    // Current authentication method
-    this.graphClient = Client.init({
-      authProvider: async (callback: (error: Error | null, token: string | null) => void) => {
-        try {
-          const token = await this.getAccessToken(apiConfigs.graph.scope);
-          callback(null, token);
-        } catch (error) {
-          callback(error as Error, null);
-        }
-      }
-    });
-
-    // Azure Identity authentication method (commented out due to package installation issues)
-    // Uncomment this code and comment out the above authentication method once you've installed the required packages
-    /*
-    // Initialize Azure Credential
-    const azureCredential = new ClientSecretCredential(MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET);
-
-    // Initialize Graph Authentication Provider
-    const authProvider = new TokenCredentialAuthenticationProvider(azureCredential, {
-      scopes: ["https://graph.microsoft.com/.default"],
-    });
-
-    // Initialize Graph Client
-    this.graphClient = Client.initWithMiddleware({
-      authProvider: authProvider,
-    });
-    */    this.setupTools();
+    // Register tools and resources immediately (no network calls)
+    this.setupTools();
     this.setupResources();
-    
-    // Setup extended resources and prompts
-    setupExtendedResources(this.server, this.graphClient);
-    setupExtendedPrompts(this.server, this.graphClient);
     
     // Error handling
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
     });
+  }
+  // Lazy initialization of Graph client
+  private getGraphClient(): Client {
+    if (!this.graphClient) {
+      this.validateCredentials(); // This only checks env vars, no network calls
+      this.graphClient = Client.init({
+        authProvider: async (callback: (error: Error | null, token: string | null) => void) => {
+          try {
+            const token = await this.getAccessToken(apiConfigs.graph.scope);
+            callback(null, token);
+          } catch (error) {
+            callback(error as Error, null);
+          }
+        }
+      });
+    }
+    return this.graphClient;
   }
 
   // Modified to accept scope and use cache
@@ -283,16 +264,14 @@ export class M365CoreServer {
         `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }  private setupTools(): void {
-    // Distribution Lists - Lazy loading enabled for tool discovery
+  }  private setupTools(): void {    // Distribution Lists - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_distribution_lists",
       distributionListSchema.shape,
       wrapToolHandler(async (args: DistributionListArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
-        this.validateCredentials();
-        try {
-          return await this.handleDistributionList(args);
+        this.validateCredentials();        try {
+          return await handleDistributionLists(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -303,15 +282,14 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Security Groups - Lazy loading enabled for tool discovery
+    );// Security Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_security_groups",
       securityGroupSchema.shape,
       wrapToolHandler(async (args: SecurityGroupArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
-        this.validateCredentials();
-        try {
-          return await this.handleSecurityGroup(args);
+        this.validateCredentials();        try {
+          return await handleSecurityGroups(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -328,9 +306,8 @@ export class M365CoreServer {
       m365GroupSchema.shape,
       wrapToolHandler(async (args: M365GroupArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
-        this.validateCredentials();
-        try {
-          return await this.handleM365Group(args);
+        this.validateCredentials();        try {
+          return await handleM365Groups(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -349,7 +326,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleExchangeSettings(this.graphClient, args);
+          return await handleExchangeSettings(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -368,7 +345,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleUserSettings(this.graphClient, args);
+          return await handleUserSettings(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -387,7 +364,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleOffboarding(this.graphClient, args);
+          return await handleOffboarding(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -406,7 +383,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleSharePointSite(this.graphClient, args);
+          return await handleSharePointSite(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -425,7 +402,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleSharePointList(this.graphClient, args);
+          return await handleSharePointList(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -444,7 +421,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleAzureAdRoles(this.graphClient, args);
+          return await handleAzureAdRoles(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -463,7 +440,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleAzureAdApps(this.graphClient, args);
+          return await handleAzureAdApps(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -484,7 +461,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleAzureAdDevices(this.graphClient, args);
+          return await handleAzureAdDevices(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -505,7 +482,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleServicePrincipals(this.graphClient, args);
+          return await handleServicePrincipals(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -526,7 +503,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleCallMicrosoftApi(this.graphClient, args, this.getAccessToken.bind(this), apiConfigs);
+          return await handleCallMicrosoftApi(this.getGraphClient(), args, this.getAccessToken.bind(this), apiConfigs);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -547,7 +524,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleSearchAuditLog(this.graphClient, args);
+          return await handleSearchAuditLog(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -568,7 +545,7 @@ export class M365CoreServer {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
-          return await handleManageAlerts(this.graphClient, args);
+          return await handleManageAlerts(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -587,7 +564,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: DLPPolicyArgs) => {
         this.validateCredentials();
         try {
-          return await handleDLPPolicies(this.graphClient, args);
+          return await handleDLPPolicies(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -607,7 +584,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: DLPIncidentArgs) => {
         this.validateCredentials();
         try {
-          return await handleDLPIncidents(this.graphClient, args);
+          return await handleDLPIncidents(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -627,7 +604,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
         this.validateCredentials();
         try {
-          return await handleDLPSensitivityLabels(this.graphClient, args);
+          return await handleDLPSensitivityLabels(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -647,7 +624,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: IntuneMacOSDeviceArgs) => {
         this.validateCredentials();
         try {
-          return await handleIntuneMacOSDevices(this.graphClient, args);
+          return await handleIntuneMacOSDevices(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -667,7 +644,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: IntuneMacOSPolicyArgs) => {
         this.validateCredentials();
         try {
-          return await handleIntuneMacOSPolicies(this.graphClient, args);
+          return await handleIntuneMacOSPolicies(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -687,7 +664,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: IntuneMacOSAppArgs) => {
         this.validateCredentials();
         try {
-          return await handleIntuneMacOSApps(this.graphClient, args);
+          return await handleIntuneMacOSApps(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -707,7 +684,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: IntuneMacOSComplianceArgs) => {
         this.validateCredentials();
         try {
-          return await handleIntuneMacOSCompliance(this.graphClient, args);
+          return await handleIntuneMacOSCompliance(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -727,7 +704,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: ComplianceFrameworkArgs) => {
         this.validateCredentials();
         try {
-          return await handleComplianceFrameworks(this.graphClient, args);
+          return await handleComplianceFrameworks(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -747,7 +724,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: ComplianceAssessmentArgs) => {
         this.validateCredentials();
         try {
-          return await handleComplianceAssessments(this.graphClient, args);
+          return await handleComplianceAssessments(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -767,7 +744,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: ComplianceMonitoringArgs) => {
         this.validateCredentials();
         try {
-          return await handleComplianceMonitoring(this.graphClient, args);
+          return await handleComplianceMonitoring(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -787,7 +764,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: EvidenceCollectionArgs) => {
         this.validateCredentials();
         try {
-          return await handleEvidenceCollection(this.graphClient, args);
+          return await handleEvidenceCollection(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -807,7 +784,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: GapAnalysisArgs) => {
         this.validateCredentials();
         try {
-          return await handleGapAnalysis(this.graphClient, args);
+          return await handleGapAnalysis(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -827,7 +804,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: AuditReportArgs) => {
         this.validateCredentials();
         try {
-          return await handleAuditReports(this.graphClient, args);
+          return await handleAuditReports(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -847,7 +824,7 @@ export class M365CoreServer {
       wrapToolHandler(async (args: CISComplianceArgs) => {
         this.validateCredentials();
         try {
-          return await handleCISCompliance(this.graphClient, args);
+          return await handleCISCompliance(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
@@ -860,15 +837,14 @@ export class M365CoreServer {
       })
     );
   }
-
   private setupResources(): void {
-    // Static resources
+    // Static resources with lazy Graph client initialization
     this.server.resource(
       "current_user",
       "m365://users/current",
       async (uri: URL) => {
         try {
-          const currentUser = await this.graphClient
+          const currentUser = await this.getGraphClient()
             .api('/me')
             .get();
           
@@ -895,7 +871,7 @@ export class M365CoreServer {
       "m365://tenant/info",
       async (uri: URL) => {
         try {
-          const tenantInfo = await this.graphClient
+          const tenantInfo = await this.getGraphClient()
             .api('/organization')
             .get();
           
@@ -922,7 +898,7 @@ export class M365CoreServer {
       "m365://sharepoint/sites",
       async (uri: URL) => {
         try {
-          const sites = await this.graphClient
+          const sites = await this.getGraphClient()
             .api('/sites?search=*')
             .get();
           
@@ -949,7 +925,7 @@ export class M365CoreServer {
       "m365://sharepoint/admin/settings",
       async (uri: URL) => {
         try {
-          const settings = await this.graphClient
+          const settings = await this.getGraphClient()
             .api('/admin/sharepoint/settings')
             .get();
           
@@ -977,7 +953,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://users/{userId}", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const user = await this.graphClient
+          const user = await this.getGraphClient()
             .api(`/users/${variables.userId}`)
             .get();
           
@@ -1004,7 +980,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://groups/{groupId}", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const group = await this.graphClient
+          const group = await this.getGraphClient()
             .api(`/groups/${variables.groupId}`)
             .get();
           
@@ -1025,13 +1001,12 @@ export class M365CoreServer {
         }
       }
     );
-    
-    this.server.resource(
+      this.server.resource(
       "sharepoint_site_info",
       new ResourceTemplate("m365://sharepoint/sites/{siteId}", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const site = await this.graphClient
+          const site = await this.getGraphClient()
             .api(`/sites/${variables.siteId}`)
             .get();
           
@@ -1052,13 +1027,21 @@ export class M365CoreServer {
         }
       }
     );
+          };
+        } catch (error) {
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+    );
     
     this.server.resource(
       "sharepoint_lists",
       new ResourceTemplate("m365://sharepoint/sites/{siteId}/lists", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-          const lists = await this.graphClient
+      async (uri: URL, variables) => {        try {
+          const lists = await this.getGraphClient()
             .api(`/sites/${variables.siteId}/lists`)
             .get();
           
@@ -1085,7 +1068,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://sharepoint/sites/{siteId}/lists/{listId}", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const list = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/sites/${variables.siteId}/lists/${variables.listId}`)
             .get();
           
@@ -1112,7 +1095,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://sharepoint/sites/{siteId}/lists/{listId}/items", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const items = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/sites/${variables.siteId}/lists/${variables.listId}/items?expand=fields`)
             .get();
           
@@ -1141,7 +1124,7 @@ export class M365CoreServer {
       "m365://security/alerts",
       async (uri: URL) => {
         try {
-          const alerts = await this.graphClient
+const  = await this.getGraphClient()
             .api('/security/alerts_v2')
             .get();
           
@@ -1168,7 +1151,7 @@ export class M365CoreServer {
       "m365://security/incidents",
       async (uri: URL) => {
         try {
-          const incidents = await this.graphClient
+const  = await this.getGraphClient()
             .api('/security/incidents')
             .get();
           
@@ -1195,7 +1178,7 @@ export class M365CoreServer {
       "m365://identity/conditionalAccess/policies",
       async (uri: URL) => {
         try {
-          const policies = await this.graphClient
+const  = await this.getGraphClient()
             .api('/identity/conditionalAccess/policies')
             .get();
           
@@ -1222,7 +1205,7 @@ export class M365CoreServer {
       "m365://applications",
       async (uri: URL) => {
         try {
-          const applications = await this.graphClient
+const  = await this.getGraphClient()
             .api('/applications')
             .get();
           
@@ -1249,7 +1232,7 @@ export class M365CoreServer {
       "m365://servicePrincipals",
       async (uri: URL) => {
         try {
-          const servicePrincipals = await this.graphClient
+const  = await this.getGraphClient()
             .api('/servicePrincipals')
             .get();
           
@@ -1276,7 +1259,7 @@ export class M365CoreServer {
       "m365://directoryRoles",
       async (uri: URL) => {
         try {
-          const roles = await this.graphClient
+const  = await this.getGraphClient()
             .api('/directoryRoles')
             .get();
           
@@ -1303,7 +1286,7 @@ export class M365CoreServer {
       "m365://privilegedAccess/azureAD/resources",
       async (uri: URL) => {
         try {
-          const resources = await this.graphClient
+const  = await this.getGraphClient()
             .api('/privilegedAccess/azureAD/resources')
             .get();
           
@@ -1330,7 +1313,7 @@ export class M365CoreServer {
       "m365://auditLogs/signIns",
       async (uri: URL) => {
         try {
-          const signIns = await this.graphClient
+const  = await this.getGraphClient()
             .api('/auditLogs/signIns')
             .top(50)
             .get();
@@ -1358,7 +1341,7 @@ export class M365CoreServer {
       "m365://auditLogs/directoryAudits",
       async (uri: URL) => {
         try {
-          const directoryAudits = await this.graphClient
+const  = await this.getGraphClient()
             .api('/auditLogs/directoryAudits')
             .top(50)
             .get();
@@ -1386,7 +1369,7 @@ export class M365CoreServer {
       "m365://deviceManagement/managedDevices",
       async (uri: URL) => {
         try {
-          const devices = await this.graphClient
+const  = await this.getGraphClient()
             .api('/deviceManagement/managedDevices')
             .get();
           
@@ -1413,7 +1396,7 @@ export class M365CoreServer {
       "m365://deviceAppManagement/mobileApps",
       async (uri: URL) => {
         try {
-          const apps = await this.graphClient
+const  = await this.getGraphClient()
             .api('/deviceAppManagement/mobileApps')
             .get();
           
@@ -1440,7 +1423,7 @@ export class M365CoreServer {
       "m365://deviceManagement/deviceCompliancePolicies",
       async (uri: URL) => {
         try {
-          const policies = await this.graphClient
+const  = await this.getGraphClient()
             .api('/deviceManagement/deviceCompliancePolicies')
             .get();
           
@@ -1467,7 +1450,7 @@ export class M365CoreServer {
       "m365://deviceManagement/deviceConfigurations",
       async (uri: URL) => {
         try {
-          const configurations = await this.graphClient
+const  = await this.getGraphClient()
             .api('/deviceManagement/deviceConfigurations')
             .get();
           
@@ -1494,7 +1477,7 @@ export class M365CoreServer {
       "m365://teams",
       async (uri: URL) => {
         try {
-          const teams = await this.graphClient
+const  = await this.getGraphClient()
             .api('/teams')
             .get();
           
@@ -1521,7 +1504,7 @@ export class M365CoreServer {
       "m365://me/mailFolders",
       async (uri: URL) => {
         try {
-          const mailFolders = await this.graphClient
+const  = await this.getGraphClient()
             .api('/me/mailFolders')
             .get();
           
@@ -1548,7 +1531,7 @@ export class M365CoreServer {
       "m365://me/events",
       async (uri: URL) => {
         try {
-          const events = await this.graphClient
+const  = await this.getGraphClient()
             .api('/me/events')
             .top(25)
             .get();
@@ -1576,7 +1559,7 @@ export class M365CoreServer {
       "m365://me/drive",
       async (uri: URL) => {
         try {
-          const drive = await this.graphClient
+const  = await this.getGraphClient()
             .api('/me/drive')
             .get();
           
@@ -1603,7 +1586,7 @@ export class M365CoreServer {
       "m365://planner/plans",
       async (uri: URL) => {
         try {
-          const plans = await this.graphClient
+const  = await this.getGraphClient()
             .api('/planner/plans')
             .get();
           
@@ -1630,7 +1613,7 @@ export class M365CoreServer {
       "m365://informationProtection/policy/labels",
       async (uri: URL) => {
         try {
-          const labels = await this.graphClient
+const  = await this.getGraphClient()
             .api('/informationProtection/policy/labels')
             .get();
           
@@ -1657,7 +1640,7 @@ export class M365CoreServer {
       "m365://identityProtection/riskyUsers",
       async (uri: URL) => {
         try {
-          const riskyUsers = await this.graphClient
+const  = await this.getGraphClient()
             .api('/identityProtection/riskyUsers')
             .get();
           
@@ -1684,7 +1667,7 @@ export class M365CoreServer {
       "m365://informationProtection/threatAssessmentRequests",
       async (uri: URL) => {
         try {
-          const requests = await this.graphClient
+const  = await this.getGraphClient()
             .api('/informationProtection/threatAssessmentRequests')
             .get();
           
@@ -1713,7 +1696,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://users/{userId}/messages", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const messages = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/users/${variables.userId}/messages`)
             .top(25)
             .get();
@@ -1741,7 +1724,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://users/{userId}/calendar", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const calendar = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/users/${variables.userId}/calendar`)
             .get();
           
@@ -1768,7 +1751,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://users/{userId}/drive", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const drive = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/users/${variables.userId}/drive`)
             .get();
           
@@ -1795,7 +1778,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://teams/{teamId}/channels", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const channels = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/teams/${variables.teamId}/channels`)
             .get();
           
@@ -1822,7 +1805,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://teams/{teamId}/members", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const members = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/teams/${variables.teamId}/members`)
             .get();
           
@@ -1849,7 +1832,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://deviceManagement/managedDevices/{deviceId}", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const device = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/deviceManagement/managedDevices/${variables.deviceId}`)
             .get();
           
@@ -1876,7 +1859,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://deviceAppManagement/mobileApps/{appId}/assignments", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const assignments = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/deviceAppManagement/mobileApps/${variables.appId}/assignments`)
             .get();
           
@@ -1903,7 +1886,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://deviceManagement/deviceCompliancePolicies/{policyId}/assignments", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const assignments = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/deviceManagement/deviceCompliancePolicies/${variables.policyId}/assignments`)
             .get();
           
@@ -1930,7 +1913,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://groups/{groupId}/members", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const members = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/groups/${variables.groupId}/members`)
             .get();
           
@@ -1957,7 +1940,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://groups/{groupId}/owners", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const owners = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/groups/${variables.groupId}/owners`)
             .get();
           
@@ -1984,7 +1967,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://users/{userId}/licenseDetails", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const licenses = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/users/${variables.userId}/licenseDetails`)
             .get();
           
@@ -2011,7 +1994,7 @@ export class M365CoreServer {
       new ResourceTemplate("m365://users/{userId}/memberOf", { list: undefined }),
       async (uri: URL, variables) => {
         try {
-          const groups = await this.graphClient
+const  = await this.getGraphClient()
             .api(`/users/${variables.userId}/memberOf`)
             .get();
           
@@ -2038,7 +2021,7 @@ export class M365CoreServer {
       "m365://security/secureScores",
       async (uri: URL) => {
         try {
-          const secureScores = await this.graphClient
+const  = await this.getGraphClient()
             .api('/security/secureScores')
             .top(10)
             .get();
@@ -2066,7 +2049,7 @@ export class M365CoreServer {
       "m365://security/informationProtection/dlpPolicies",
       async (uri: URL) => {
         try {
-          const dlpPolicies = await this.graphClient
+const  = await this.getGraphClient()
             .api('/security/informationProtection/dlpPolicies')
             .get();
           
@@ -2093,7 +2076,7 @@ export class M365CoreServer {
       "m365://security/labels/retentionLabels",
       async (uri: URL) => {
         try {
-          const retentionLabels = await this.graphClient
+const  = await this.getGraphClient()
             .api('/security/labels/retentionLabels')
             .get();
           
@@ -2120,7 +2103,7 @@ export class M365CoreServer {
       "m365://security/informationProtection/sensitivityLabels",
       async (uri: URL) => {
         try {
-          const sensitivityLabels = await this.graphClient
+const  = await this.getGraphClient()
             .api('/security/informationProtection/sensitivityLabels')
             .get();
           
@@ -2147,7 +2130,7 @@ export class M365CoreServer {
       "m365://compliance/communicationCompliance/policies",
       async (uri: URL) => {
         try {
-          const policies = await this.graphClient
+const  = await this.getGraphClient()
             .api('/compliance/communicationCompliance/policies')
             .get();
           
@@ -2174,7 +2157,7 @@ export class M365CoreServer {
       "m365://compliance/ediscovery/cases",
       async (uri: URL) => {
         try {
-          const cases = await this.graphClient
+const  = await this.getGraphClient()
             .api('/compliance/ediscovery/cases')
             .get();
           
@@ -2201,7 +2184,7 @@ export class M365CoreServer {
       "m365://subscribedSkus",
       async (uri: URL) => {
         try {
-          const skus = await this.graphClient
+const  = await this.getGraphClient()
             .api('/subscribedSkus')
             .get();
           
