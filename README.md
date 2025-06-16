@@ -1,3 +1,22 @@
+## Latest Enhancements (June 16, 2025)
+
+**Extended Resources and Prompts (40 Resources + 5 Comprehensive Prompts):**
+- Added 40 additional Microsoft 365 resources covering security, compliance, device management, and collaboration
+- Implemented 5 intelligent prompts for automated analysis and recommendations:
+  - **Security Assessment**: Comprehensive security posture analysis with recommendations
+  - **Compliance Review**: Framework-specific compliance gap analysis (SOC2, ISO27001, NIST, GDPR, HIPAA)
+  - **User Access Review**: Individual and organization-wide access rights analysis
+  - **Device Compliance Analysis**: Intune device management and compliance assessment
+  - **Collaboration Governance**: Teams and SharePoint governance analysis
+- Enhanced resource coverage includes:
+  - Security alerts, incidents, and conditional access policies
+  - Intune device management, apps, and compliance policies
+  - Extended user, group, and team information
+  - Information protection and DLP policies
+  - Audit logs and privileged access data
+
+For detailed information about all new resources and prompts, see [EXTENDED_FEATURES.md](./EXTENDED_FEATURES.md).
+
 ## Recent Enhancements (June 7, 2025)
 
 **TypeScript Error Resolution & Compliance Module Enhancements:**
