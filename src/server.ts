@@ -9,7 +9,6 @@ import 'isomorphic-fetch';
 import express from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // Import Azure Identity library (commented out due to package installation issues)
 // import { ClientSecretCredential } from '@azure/identity';
@@ -284,12 +283,11 @@ export class M365CoreServer {
         `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }
-  private setupTools(): void {
+  }  private setupTools(): void {
     // Distribution Lists - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_distribution_lists",
-      distributionListSchema,
+      distributionListSchema.shape,
       wrapToolHandler(async (args: DistributionListArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -305,12 +303,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Security Groups - Lazy loading enabled for tool discovery
+    );    // Security Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_security_groups",
-      securityGroupSchema,
+      securityGroupSchema.shape,
       wrapToolHandler(async (args: SecurityGroupArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -329,7 +325,7 @@ export class M365CoreServer {
     );    // M365 Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_m365_groups",
-      m365GroupSchema,
+      m365GroupSchema.shape,
       wrapToolHandler(async (args: M365GroupArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -345,12 +341,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Exchange Settings - Lazy loading enabled for tool discovery
+    );    // Exchange Settings - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_exchange_settings",
-      exchangeSettingsSchema,
+      exchangeSettingsSchema.shape,
       wrapToolHandler(async (args: ExchangeSettingsArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -366,12 +360,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // User Management - Lazy loading enabled for tool discovery
+    );    // User Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_user_settings",
-      userManagementSchema,
+      userManagementSchema.shape,
       wrapToolHandler(async (args: UserManagementArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -387,12 +379,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Offboarding - Lazy loading enabled for tool discovery
+    );    // Offboarding - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_offboarding",
-      offboardingSchema,
+      offboardingSchema.shape,
       wrapToolHandler(async (args: OffboardingArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -411,7 +401,7 @@ export class M365CoreServer {
     );    // SharePoint Sites - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_sharepoint_sites",
-      sharePointSiteSchema,
+      sharePointSiteSchema.shape,
       wrapToolHandler(async (args: SharePointSiteArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -427,12 +417,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // SharePoint Lists - Lazy loading enabled for tool discovery
+    );    // SharePoint Lists - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_sharepoint_lists",
-      sharePointListSchema,
+      sharePointListSchema.shape,
       wrapToolHandler(async (args: SharePointListArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -448,12 +436,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Azure AD Roles - Lazy loading enabled for tool discovery
+    );    // Azure AD Roles - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_roles",
-      azureAdRoleSchema,
+      azureAdRoleSchema.shape,
       wrapToolHandler(async (args: AzureAdRoleArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -469,12 +455,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Azure AD Apps - Lazy loading enabled for tool discovery
+    );    // Azure AD Apps - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_apps",
-      azureAdAppSchema,
+      azureAdAppSchema.shape,
       wrapToolHandler(async (args: AzureAdAppArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -495,7 +479,7 @@ export class M365CoreServer {
     // Azure AD Devices - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_devices",
-      azureAdDeviceSchema,
+      azureAdDeviceSchema.shape,
       wrapToolHandler(async (args: AzureAdDeviceArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -516,7 +500,7 @@ export class M365CoreServer {
     // Service Principals - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_service_principals",
-      azureAdSpSchema,
+      azureAdSpSchema.shape,
       wrapToolHandler(async (args: AzureAdSpArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -537,7 +521,7 @@ export class M365CoreServer {
     // Dynamic API Endpoint - Lazy loading enabled for tool discovery
     this.server.tool(
       "call_microsoft_api",
-      callMicrosoftApiSchema,
+      callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -558,7 +542,7 @@ export class M365CoreServer {
     // Audit Log - Lazy loading enabled for tool discovery
     this.server.tool(
       "search_audit_log",
-      auditLogSchema,
+      auditLogSchema.shape,
       wrapToolHandler(async (args: AuditLogArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -579,7 +563,7 @@ export class M365CoreServer {
     // Alerts - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_alerts",
-      alertSchema,
+      alertSchema.shape,
       wrapToolHandler(async (args: AlertArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -2166,5 +2150,4 @@ export class M365CoreServer {
     };
     
     this.broadcastUpdate(notification);
-  }
-}
+  }}

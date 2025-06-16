@@ -68,17 +68,17 @@ export interface ExchangeSettingsArgs {
   target?: string;
   settings?: {
     automateProcessing?: {
-      autoReplyEnabled?: boolean;
       autoForwardEnabled?: boolean;
+      autoReplyEnabled?: boolean;
     };
     rules?: {
       name: string;
-      conditions: Record<string, unknown>;
-      actions: Record<string, unknown>;
+      conditions: Record<string, any>;
+      actions: Record<string, any>;
     }[];
     sharingPolicy?: {
-      domains: string[];
-      enabled: boolean;
+      enabled?: boolean;
+      domains?: string[];
     };
     retentionTags?: {
       name: string;
