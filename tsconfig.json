@@ -6,10 +6,10 @@
     "esModuleInterop": true,
     "strict": true,
     "outDir": "build",
-    "rootDir": "src",
+    "rootDir": ".",
     "declaration": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "smithery.ts"],
   "exclude": ["node_modules", "build"]
 }
