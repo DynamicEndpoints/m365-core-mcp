@@ -9,6 +9,7 @@ import 'isomorphic-fetch';
 import express from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // Import Azure Identity library (commented out due to package installation issues)
 // import { ClientSecretCredential } from '@azure/identity';
@@ -249,9 +250,7 @@ export class M365CoreServer {
     this.tokenCache.set(scope, { token: data.access_token, expiresOn });
 
     return data.access_token;
-  }
-
-  private setupTools(): void {
+  }  private setupTools(): void {
     // Distribution Lists
     this.server.tool(
       "manage_distribution_lists",
@@ -482,7 +481,7 @@ export class M365CoreServer {
 
     // Dynamic API Endpoint
     this.server.tool(
-      "Dynamicendpoint_automation_assistant",
+      "call_microsoft_api",
       callMicrosoftApiSchema,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
         try {
@@ -525,262 +524,6 @@ export class M365CoreServer {
       wrapToolHandler(async (args: AlertArgs) => {
         try {
           return await handleManageAlerts(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    // DLP Management Tools
-    this.server.tool(
-      "manage_dlp_policies",
-      dlpPolicySchema,
-      wrapToolHandler(async (args: DLPPolicyArgs) => {
-        try {
-          return await handleDLPPolicies(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_dlp_incidents",
-      dlpIncidentSchema,
-      wrapToolHandler(async (args: DLPIncidentArgs) => {
-        try {
-          return await handleDLPIncidents(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_sensitivity_labels",
-      sensitivityLabelSchema,
-      wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
-        try {
-          return await handleDLPSensitivityLabels(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    // Intune macOS Management Tools
-    this.server.tool(
-      "manage_intune_macos_devices",
-      intuneMacOSDeviceSchema,
-      wrapToolHandler(async (args: IntuneMacOSDeviceArgs) => {
-        try {
-          return await handleIntuneMacOSDevices(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_intune_macos_policies",
-      intuneMacOSPolicySchema,
-      wrapToolHandler(async (args: IntuneMacOSPolicyArgs) => {
-        try {
-          return await handleIntuneMacOSPolicies(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_intune_macos_apps",
-      intuneMacOSAppSchema,
-      wrapToolHandler(async (args: IntuneMacOSAppArgs) => {
-        try {
-          return await handleIntuneMacOSApps(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_intune_macos_compliance",
-      intuneMacOSComplianceSchema,
-      wrapToolHandler(async (args: IntuneMacOSComplianceArgs) => {
-        try {
-          return await handleIntuneMacOSCompliance(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    // Compliance Framework Management Tools
-    this.server.tool(
-      "manage_compliance_frameworks",
-      complianceFrameworkSchema,
-      wrapToolHandler(async (args: ComplianceFrameworkArgs) => {
-        try {
-          return await handleComplianceFrameworks(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_compliance_assessments",
-      complianceAssessmentSchema,
-      wrapToolHandler(async (args: ComplianceAssessmentArgs) => {
-        try {
-          return await handleComplianceAssessments(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_compliance_monitoring",
-      complianceMonitoringSchema,
-      wrapToolHandler(async (args: ComplianceMonitoringArgs) => {
-        try {
-          return await handleComplianceMonitoring(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_evidence_collection",
-      evidenceCollectionSchema,
-      wrapToolHandler(async (args: EvidenceCollectionArgs) => {
-        try {
-          return await handleEvidenceCollection(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "manage_gap_analysis",
-      gapAnalysisSchema,
-      wrapToolHandler(async (args: GapAnalysisArgs) => {
-        try {
-          return await handleGapAnalysis(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    this.server.tool(
-      "generate_audit_reports",
-      auditReportSchema,
-      wrapToolHandler(async (args: AuditReportArgs) => {
-        try {
-          return await handleAuditReports(this.graphClient, args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
-    // CIS Compliance Management Tool
-    this.server.tool(
-      "manage_cis_compliance",
-      cisComplianceSchema,
-      wrapToolHandler(async (args: CISComplianceArgs) => {
-        try {
-          return await handleCISCompliance(this.graphClient, args);
         } catch (error) {
           if (error instanceof McpError) {
             throw error;
