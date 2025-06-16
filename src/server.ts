@@ -390,13 +390,13 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // SharePoint Sites
+    );    // SharePoint Sites - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_sharepoint_sites",
       sharePointSiteSchema,
       wrapToolHandler(async (args: SharePointSiteArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleSharePointSite(this.graphClient, args);
         } catch (error) {
@@ -411,11 +411,13 @@ export class M365CoreServer {
       })
     );
 
-    // SharePoint Lists
+    // SharePoint Lists - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_sharepoint_lists",
       sharePointListSchema,
       wrapToolHandler(async (args: SharePointListArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleSharePointList(this.graphClient, args);
         } catch (error) {
@@ -430,11 +432,13 @@ export class M365CoreServer {
       })
     );
 
-    // Azure AD Roles
+    // Azure AD Roles - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_roles",
       azureAdRoleSchema,
       wrapToolHandler(async (args: AzureAdRoleArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleAzureAdRoles(this.graphClient, args);
         } catch (error) {
@@ -449,11 +453,13 @@ export class M365CoreServer {
       })
     );
 
-    // Azure AD Apps
+    // Azure AD Apps - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_apps",
       azureAdAppSchema,
       wrapToolHandler(async (args: AzureAdAppArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleAzureAdApps(this.graphClient, args);
         } catch (error) {
@@ -468,11 +474,13 @@ export class M365CoreServer {
       })
     );
 
-    // Azure AD Devices
+    // Azure AD Devices - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_devices",
       azureAdDeviceSchema,
       wrapToolHandler(async (args: AzureAdDeviceArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleAzureAdDevices(this.graphClient, args);
         } catch (error) {
@@ -487,11 +495,13 @@ export class M365CoreServer {
       })
     );
 
-    // Service Principals
+    // Service Principals - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_service_principals",
       azureAdSpSchema,
       wrapToolHandler(async (args: AzureAdSpArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleServicePrincipals(this.graphClient, args);
         } catch (error) {
@@ -506,11 +516,13 @@ export class M365CoreServer {
       })
     );
 
-    // Dynamic API Endpoint
+    // Dynamic API Endpoint - Lazy loading enabled for tool discovery
     this.server.tool(
       "call_microsoft_api",
       callMicrosoftApiSchema,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleCallMicrosoftApi(this.graphClient, args, this.getAccessToken.bind(this), apiConfigs);
         } catch (error) {
@@ -525,11 +537,13 @@ export class M365CoreServer {
       })
     );
 
-    // Audit Log
+    // Audit Log - Lazy loading enabled for tool discovery
     this.server.tool(
       "search_audit_log",
       auditLogSchema,
       wrapToolHandler(async (args: AuditLogArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleSearchAuditLog(this.graphClient, args);
         } catch (error) {
@@ -544,11 +558,13 @@ export class M365CoreServer {
       })
     );
 
-    // Alerts
+    // Alerts - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_alerts",
       alertSchema,
       wrapToolHandler(async (args: AlertArgs) => {
+        // Validate credentials only when tool is executed (lazy loading)
+        this.validateCredentials();
         try {
           return await handleManageAlerts(this.graphClient, args);
         } catch (error) {
