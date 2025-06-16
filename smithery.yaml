@@ -38,3 +38,194 @@ startCommand:
     (config) => ({
       command: 'node',
       args: ['build/index.js'],
+      env: {
+        MS_TENANT_ID: config.msTenantId,
+        MS_CLIENT_ID: config.msClientId,
+        MS_CLIENT_SECRET: config.msClientSecret,
+        USE_HTTP: config.useHttp?.toString() || 'false',
+        STATELESS: config.stateless?.toString() || 'false',
+        PORT: config.port?.toString() || '3000',
+        LOG_LEVEL: config.logLevel || 'info'
+      }
+    })
+
+# Tool discovery metadata for Smithery
+tools:
+  # Core M365 Management Tools
+  - name: manage_distribution_lists
+    description: Manage Microsoft 365 distribution lists - create, update, delete, and manage membership
+    category: Microsoft 365
+    tags: [email, groups, distribution-lists, m365]
+
+  - name: manage_security_groups
+    description: Manage Azure AD security groups - create, update, delete, and manage membership
+    category: Azure AD
+    tags: [security, groups, azure-ad, access-control]
+
+  - name: manage_m365_groups
+    description: Manage Microsoft 365 Groups - create, update, delete, and manage membership
+    category: Microsoft 365
+    tags: [groups, collaboration, teams, m365]
+
+  - name: manage_exchange_settings
+    description: Manage Exchange Online settings - mailbox configuration, transport rules, and policies
+    category: Exchange Online
+    tags: [exchange, email, mailbox, transport-rules]
+
+  - name: manage_user_settings
+    description: Manage user settings and configurations across Microsoft 365 services
+    category: User Management
+    tags: [users, settings, configuration, m365]
+
+  - name: manage_offboarding
+    description: Automate user offboarding processes - disable accounts, backup data, transfer ownership
+    category: User Management
+    tags: [offboarding, security, data-transfer, lifecycle]
+
+  - name: manage_sharepoint_sites
+    description: Manage SharePoint sites - create, configure, and manage site settings and permissions
+    category: SharePoint
+    tags: [sharepoint, sites, collaboration, content-management]
+
+  - name: manage_sharepoint_lists
+    description: Manage SharePoint lists and libraries - create, configure, and manage list items
+    category: SharePoint
+    tags: [sharepoint, lists, data-management, content]
+
+  - name: manage_azure_ad_roles
+    description: Manage Azure AD directory roles - assign, remove, and list role assignments
+    category: Azure AD
+    tags: [roles, permissions, rbac, azure-ad]
+
+  - name: manage_azure_ad_apps
+    description: Manage Azure AD application registrations - create, update, and manage app permissions
+    category: Azure AD
+    tags: [applications, app-registrations, azure-ad, oauth]
+
+  - name: manage_azure_ad_devices
+    description: Manage Azure AD registered devices - enable, disable, delete, and monitor devices
+    category: Azure AD
+    tags: [devices, device-management, azure-ad, security]
+
+  - name: manage_service_principals
+    description: Manage Azure AD service principals - create, update, and manage service principal permissions
+    category: Azure AD
+    tags: [service-principals, applications, azure-ad, automation]
+
+  - name: call_microsoft_api
+    description: Dynamic API endpoint for calling any Microsoft Graph or Azure Resource Management API
+    category: API Access
+    tags: [graph-api, azure-api, dynamic, automation]
+
+  - name: search_audit_log
+    description: Search and analyze Azure AD unified audit logs for compliance and security monitoring
+    category: Security & Compliance
+    tags: [audit-logs, compliance, security, monitoring]
+
+  - name: manage_alerts
+    description: Manage and respond to Microsoft security alerts from various security products
+    category: Security & Compliance
+    tags: [security-alerts, incident-response, monitoring, threat-detection]
+
+  # DLP and Information Protection Tools
+  - name: manage_dlp_policies
+    description: Manage Data Loss Prevention policies across Microsoft 365 services
+    category: Security & Compliance
+    tags: [dlp, data-protection, compliance, security]
+
+  - name: manage_dlp_incidents
+    description: Manage and investigate DLP policy incidents and violations
+    category: Security & Compliance
+    tags: [dlp, incidents, investigation, compliance]
+
+  - name: manage_sensitivity_labels
+    description: Manage sensitivity labels for information protection and classification
+    category: Security & Compliance
+    tags: [sensitivity-labels, information-protection, classification, compliance]
+
+  # Intune macOS Management Tools
+  - name: manage_intune_macos_devices
+    description: Manage macOS devices in Microsoft Intune - enrollment, compliance, and device actions
+    category: Device Management
+    tags: [intune, macos, device-management, mdm]
+
+  - name: manage_intune_macos_policies
+    description: Manage macOS configuration and compliance policies in Intune
+    category: Device Management
+    tags: [intune, macos, policies, configuration, compliance]
+
+  - name: manage_intune_macos_apps
+    description: Manage macOS application deployment and management through Intune
+    category: Device Management
+    tags: [intune, macos, applications, app-deployment]
+
+  - name: assess_intune_macos_compliance
+    description: Assess and report on macOS device compliance with organizational policies
+    category: Device Management
+    tags: [intune, macos, compliance, assessment, reporting]
+
+  # Compliance Framework Tools
+  - name: manage_compliance_frameworks
+    description: Manage compliance frameworks (HITRUST, ISO27001, SOC2, CIS) and their configurations
+    category: Security & Compliance
+    tags: [compliance, frameworks, governance, risk-management]
+
+  - name: run_compliance_assessments
+    description: Execute compliance assessments against various frameworks and standards
+    category: Security & Compliance
+    tags: [compliance, assessment, auditing, frameworks]
+
+  - name: monitor_compliance_status
+    description: Monitor ongoing compliance status and receive alerts for compliance drift
+    category: Security & Compliance
+    tags: [compliance, monitoring, alerts, status]
+
+  - name: collect_evidence
+    description: Automated evidence collection for compliance and audit purposes
+    category: Security & Compliance
+    tags: [evidence, compliance, auditing, documentation]
+
+  - name: analyze_compliance_gaps
+    description: Perform gap analysis against compliance frameworks and standards
+    category: Security & Compliance
+    tags: [gap-analysis, compliance, assessment, frameworks]
+
+  - name: generate_audit_reports
+    description: Generate comprehensive audit reports for compliance and security assessments
+    category: Security & Compliance
+    tags: [audit-reports, compliance, documentation, reporting]
+
+  - name: assess_cis_compliance
+    description: Assess CIS (Center for Internet Security) benchmark compliance across systems
+    category: Security & Compliance
+    tags: [cis, benchmarks, security, compliance, assessment]
+
+# Resource discovery metadata
+resources:
+  - name: current_user
+    description: Information about the currently authenticated user
+    uri: m365://user/me
+
+  - name: tenant_info
+    description: Microsoft 365 tenant information and configuration
+    uri: m365://tenant/info
+
+  - name: sharepoint_sites
+    description: List of SharePoint sites in the organization
+    uri: m365://sharepoint/sites
+
+  - name: sharepoint_admin_settings
+    description: SharePoint admin settings and configuration
+    uri: m365://sharepoint/admin/settings
+
+  - name: user_info
+    description: Detailed information about a specific user
+    uri: m365://users/{userId}
+
+  - name: group_info
+    description: Information about a specific group
+    uri: m365://groups/{groupId}
+
+  - name: device_info
+    description: Information about a specific device
+    uri: m365://devices/{deviceId}
