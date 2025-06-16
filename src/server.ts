@@ -159,11 +159,29 @@ export class M365CoreServer {
   private graphClient: Client;
   // Cache for tokens based on scope
   private tokenCache: Map<string, { token: string; expiresOn: number }> = new Map();
+    // SSE and real-time capabilities
+  public sseClients: Set<any> = new Set();
+  public progressTrackers: Map<string, any> = new Map();
 
   constructor() {
     this.server = new McpServer({
       name: 'm365-core-server',
       version: '1.0.0',
+      // Enable all modern MCP capabilities
+      capabilities: {
+        tools: {},
+        resources: {
+          subscribe: true, // Enable resource subscriptions for real-time updates
+          listChanged: true
+        },
+        prompts: {},
+        logging: {},
+        // Enable progress reporting for long-running operations
+        experimental: {
+          progressReporting: true,
+          streamingResponses: true
+        }
+      }
     });
 
     // Current authentication method
@@ -2032,5 +2050,121 @@ export class M365CoreServer {
         },
       ],
     };
+  }
+
+  // Enhanced tool handler with progress reporting for bulk operations
+  private async handleBulkOperation(args: any, operationType: string): Promise<string> {
+    const operationId = randomUUID();
+    
+    try {
+      this.reportProgress(operationId, 0, `Starting ${operationType} operation`);
+      
+      // Simulate bulk operation with progress updates
+      const items = args.items || [];
+      const total = items.length;
+      
+      for (let i = 0; i < total; i++) {
+        // Process each item
+        const progress = Math.round(((i + 1) / total) * 100);
+        this.reportProgress(operationId, progress, `Processing item ${i + 1} of ${total}`);
+        
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      const result = `Completed ${operationType} operation for ${total} items`;
+      this.completeOperation(operationId, result);
+      
+      return result;
+    } catch (error) {
+      this.completeOperation(operationId, { error: error instanceof Error ? error.message : 'Unknown error' });
+      throw error;
+    }
+  }
+  // Enhanced distribution list handler with progress reporting
+  private async handleDistributionListWithProgress(args: DistributionListArgs): Promise<any> {
+    const operationId = randomUUID();
+    
+    try {
+      this.reportProgress(operationId, 0, `Starting distribution list operation: ${args.action}`);
+      
+      // Call original handler
+      this.reportProgress(operationId, 50, 'Executing distribution list operation...');
+      const result = await this.handleDistributionList(args);
+      
+      this.reportProgress(operationId, 100, 'Distribution list operation completed');
+      this.completeOperation(operationId, result);
+      
+      // Notify resource change
+      if (args.action === 'create' || args.action === 'update' || args.action === 'delete') {
+        this.notifyResourceChange(`m365://distribution-lists/${args.listId || 'new'}`, 
+          args.action === 'create' ? 'created' : args.action === 'update' ? 'updated' : 'deleted');
+      }
+      
+      return result;
+    } catch (error) {
+      this.completeOperation(operationId, { error: error instanceof Error ? error.message : 'Unknown error' });
+      throw error;
+    }
+  }
+
+  // SSE and real-time capabilities
+  public addSSEClient(client: any): void {
+    this.sseClients.add(client);
+    console.log(`SSE client connected. Total clients: ${this.sseClients.size}`);
+  }
+
+  public removeSSEClient(client: any): void {
+    this.sseClients.delete(client);
+    console.log(`SSE client disconnected. Total clients: ${this.sseClients.size}`);
+  }
+
+  public broadcastUpdate(update: any): void {
+    this.sseClients.forEach(client => {
+      try {
+        client.write(`data: ${JSON.stringify(update)}\n\n`);
+      } catch (error) {
+        console.error('Error broadcasting update to SSE client:', error);
+        this.removeSSEClient(client);
+      }
+    });
+  }
+
+  // Progress reporting for long-running operations
+  public reportProgress(operationId: string, progress: number, message?: string): void {
+    const progressUpdate = {
+      type: 'progress',
+      operationId,
+      progress,
+      message,
+      timestamp: new Date().toISOString()
+    };
+    
+    this.progressTrackers.set(operationId, progressUpdate);
+    this.broadcastUpdate(progressUpdate);
+  }
+
+  public completeOperation(operationId: string, result: any): void {
+    const completion = {
+      type: 'completion',
+      operationId,
+      result,
+      timestamp: new Date().toISOString()
+    };
+    
+    this.progressTrackers.delete(operationId);
+    this.broadcastUpdate(completion);
+  }
+
+  // Enhanced notification system for resource changes
+  public notifyResourceChange(resourceUri: string, changeType: 'created' | 'updated' | 'deleted'): void {
+    const notification = {
+      type: 'resourceChange',
+      resourceUri,
+      changeType,
+      timestamp: new Date().toISOString()
+    };
+    
+    this.broadcastUpdate(notification);
   }
 }

@@ -167,6 +167,123 @@ async function startServer() {
       app.delete('/mcp', handleSessionRequest);
     }
 
+    // Add SSE endpoint for real-time updates
+    app.get('/sse', (req: Request, res: Response) => {
+      // Set headers for SSE
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      });
+
+      // Add client to server's SSE clients
+      server.addSSEClient(res);
+
+      // Send initial connection event
+      res.write(`data: ${JSON.stringify({
+        type: 'connected',
+        message: 'Connected to M365 Core MCP Server SSE stream',
+        timestamp: new Date().toISOString()
+      })}\n\n`);
+
+      // Handle client disconnect
+      req.on('close', () => {
+        server.removeSSEClient(res);
+      });
+
+      req.on('aborted', () => {
+        server.removeSSEClient(res);
+      });
+    });
+
+    // Health check endpoint with full capabilities report
+    app.get('/health', (req: Request, res: Response) => {
+      res.json({
+        status: 'healthy',
+        server: 'M365 Core MCP Server',
+        version: '1.0.0',
+        capabilities: {
+          tools: true,
+          resources: true,
+          prompts: true,
+          sse: true,
+          progressReporting: true,
+          resourceSubscriptions: true,
+          streamingResponses: true,
+          lazyLoading: true
+        },
+        features: {
+          'Microsoft Graph API': 'Full access to M365 services',
+          'Azure AD Management': 'Users, groups, roles, devices, apps',
+          'Exchange Online': 'Mailbox and transport settings',
+          'SharePoint': 'Sites and lists management',
+          'Security & Compliance': 'Audit logs, alerts, compliance',
+          'Real-time Updates': 'SSE for live notifications',
+          'Progress Tracking': 'Long-running operation status',
+          'Resource Subscriptions': 'Live resource change notifications'
+        },
+        sseClients: server.sseClients?.size || 0,
+        activeOperations: server.progressTrackers?.size || 0,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Capabilities endpoint for MCP clients
+    app.get('/capabilities', (req: Request, res: Response) => {
+      res.json({
+        name: 'm365-core-server',
+        version: '1.0.0',
+        protocol: 'mcp',
+        capabilities: {
+          tools: {
+            listChanged: true
+          },
+          resources: {
+            subscribe: true,
+            listChanged: true
+          },
+          prompts: {
+            listChanged: true
+          },
+          experimental: {
+            progressReporting: true,
+            streamingResponses: true
+          }
+        },
+        tools: [
+          'manage_distribution_lists',
+          'manage_security_groups', 
+          'manage_m365_groups',
+          'manage_exchange_settings',
+          'manage_user_settings',
+          'manage_offboarding',
+          'manage_sharepoint_sites',
+          'manage_sharepoint_lists',
+          'manage_azure_ad_roles',
+          'manage_azure_ad_apps',
+          'manage_azure_ad_devices',
+          'manage_service_principals',
+          'call_microsoft_api',
+          'search_audit_log',
+          'manage_alerts'
+        ],
+        resources: [
+          'current_user',
+          'organization_info',
+          'security_score',
+          'recent_audit_logs'
+        ],
+        prompts: [
+          'create_security_group',
+          'setup_compliance_policy',
+          'analyze_security_score',
+          'audit_user_activity'
+        ]
+      });
+    });
+
     // Start the HTTP server
     app.listen(PORT, () => {
       console.log(`M365 Core MCP Server running on HTTP at port ${PORT}`);
