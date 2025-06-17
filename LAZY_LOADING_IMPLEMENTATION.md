@@ -1,52 +1,230 @@
 # Microsoft 365 Core MCP Server - Lazy Loading Implementation
 
-Your M365 Core MCP Server now implements **lazy loading best practices** for optimal tool discovery in Smithery and other MCP registries!
+## 🎯 **Problem Solved**
 
-## 🚀 **What's New**
+**Before:** Tools were invisible on Smithery because the server required Microsoft 365 credentials during initialization.
 
-### **✅ Lazy Loading Pattern**
-- **Tool Discovery**: All tools are listed without requiring authentication
-- **Credential Validation**: Only happens when tools are actually invoked
-- **Better User Experience**: Users can explore capabilities before configuring credentials
+**After:** Server starts successfully without credentials, making all 40+ tools discoverable while deferring authentication until actual tool execution.
 
-### **✅ Enhanced Error Messages**
-- Clear guidance on required environment variables
-- Helpful setup instructions with Azure documentation links
-- Better debugging information for authentication issues
+## 🚀 **Implementation Changes**
 
-### **✅ Smithery Registry Compatibility**
-- Tools appear in discovery without authentication barriers
-- Rich descriptions and schemas for better tool exploration
-- Proper error handling that doesn't block tool listing
+### **1. Modified `getGraphClient()` Method**
 
-## 📋 **Implementation Details**
-
-### **Before (Authentication Required for Discovery)**
+**Before:**
 ```typescript
-// Old pattern - blocked tool discovery
-private setupTools(): void {
-  this.validateCredentials(); // ❌ Blocked discovery
-  this.server.tool("manage_groups", schema, handler);
+private getGraphClient(): Client {
+  if (!this.graphClient) {
+    this.validateCredentials(); // ❌ Failed here if no credentials
+    this.graphClient = Client.init({...});
+  }
+  return this.graphClient;
 }
 ```
 
-### **After (Lazy Loading)**
+**After:**
 ```typescript
-// New pattern - enables discovery
-private setupTools(): void {
-  this.server.tool("manage_groups", schema, async (args) => {
-    this.validateCredentials(); // ✅ Only when tool is used
-    return await this.handleGroups(args);
-  });
+private getGraphClient(): Client {
+  if (!this.graphClient) {
+    // ✅ No early validation - deferred to authProvider
+    this.graphClient = Client.init({
+      authProvider: async (callback) => {
+        try {
+          this.validateCredentials(); // ✅ Validate only when token needed
+          const token = await this.getAccessToken(apiConfigs.graph.scope);
+          callback(null, token);
+        } catch (error) {
+          callback(error, null);
+        }
+      }
+    });
+  }
+  return this.graphClient;
 }
 ```
 
-## 🔧 **Key Benefits**
+### **2. Added Non-Throwing Credential Check**
 
-1. **🔍 Tool Discovery**: Users can browse all available tools in Smithery
-2. **⚡ Better UX**: No authentication barriers during exploration
-3. **📚 Clear Documentation**: Rich error messages guide users through setup
-4. **🎯 Focused Validation**: Credentials checked only when needed
+```typescript
+private hasValidCredentials(): boolean {
+  const requiredEnvVars = ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET'];
+  return requiredEnvVars.every(varName => !!process.env[varName]);
+}
+```
+
+### **3. Added Health Check Tool (No Auth Required)**
+
+```typescript
+this.server.tool(
+  "health_check",
+  "Check server status and authentication configuration without requiring credentials",
+  z.object({}).shape,
+  wrapToolHandler(async () => {
+    const hasCredentials = this.hasValidCredentials();
+    return {
+      content: [{
+        type: "text",
+        text: `M365 Core MCP Server Health Check\n\n` +
+              `Status: ${hasCredentials ? 'Ready' : 'Requires Configuration'}`
+      }]
+    };
+  })
+);
+```
+
+## 📊 **Authentication Flow**
+
+### **1. Server Startup Phase**
+```
+Server Creation → Tool Registration → Resource Setup → Ready for Discovery
+     ↓                ↓                   ↓              ↓
+No auth needed   No auth needed    No auth needed   All tools visible
+```
+
+### **2. Tool Discovery Phase (Smithery)**
+```
+List Tools → Get Tool Schemas → Show Descriptions → User Selection
+    ↓              ↓                  ↓               ↓
+Available     Available         Available      Ready to execute
+```
+
+### **3. Tool Execution Phase**
+```
+User Calls Tool → Validate Credentials → Get Token → Call Microsoft API
+      ↓                    ↓                ↓            ↓
+  Parameters         Check env vars    OAuth flow    Graph API call
+```
+
+## ✅ **Benefits for Smithery**
+
+### **🔍 Tool Discovery**
+- Server starts without requiring environment variables
+- All 40+ tools immediately visible and discoverable
+- Tool schemas and descriptions accessible for introspection
+- Proper capability advertisement
+
+### **🛠️ Graceful Degradation**
+- Health check tool works without authentication
+- Clear error messages when credentials missing
+- Non-blocking server initialization
+- Progressive enhancement approach
+
+### **👨‍� Developer Experience**
+- Server can be tested and explored without setup
+- Authentication configuration is optional for discovery
+- Clear feedback about what's needed for execution
+- Standard MCP server behavior
+
+## 🔧 **Tool Categories**
+
+### **✅ Always Available (No Auth Required)**
+- `health_check` - Server status and configuration check
+
+### **🔐 Authentication Required (Lazy Loaded)**
+- `manage_distribution_lists` - Exchange distribution list management
+- `manage_security_groups` - Azure AD security group operations  
+- `manage_m365_groups` - Microsoft 365 group administration
+- `create_intune_policy` - Intune policy creation with validation
+- All other Microsoft 365 management tools (40+ total)
+
+## 🌍 **Environment Variables**
+
+**Required for tool execution (not for discovery):**
+- `MS_TENANT_ID` - Azure AD tenant ID
+- `MS_CLIENT_ID` - Azure AD application (client) ID
+- `MS_CLIENT_SECRET` - Azure AD application client secret
+
+**Optional:**
+- `PORT` - HTTP server port (default: 3000)
+- `LOG_LEVEL` - Logging level (default: info)
+- `NODE_ENV` - Environment mode (stdio/http)
+
+## 📚 **Usage with Smithery**
+
+### **1. Server Registration**
+```bash
+# Server can be registered without environment variables
+# Tools will be immediately visible in Smithery interface
+```
+
+### **2. Tool Discovery**
+- All tools visible in Smithery catalog
+- Rich descriptions and parameter schemas available
+- No authentication required for browsing capabilities
+
+### **3. Configuration** 
+- Set environment variables when ready to execute tools
+- Use `health_check` tool to verify configuration
+- Get setup instructions and status information
+
+### **4. Execution**
+- Tools validate credentials on first execution
+- Tokens are cached for subsequent calls
+- Rate limiting and error handling active
+
+## 🚨 **Error Handling**
+
+### **Server Startup**
+```
+✅ Success: Server starts regardless of credential availability
+✅ Success: All tools registered and visible
+✅ Success: Resources available for discovery
+```
+
+### **Tool Execution**
+```
+❌ Missing Credentials:
+   Clear error message with setup instructions
+   Links to Azure AD app registration documentation
+   
+✅ Valid Credentials:
+   Successful authentication and API calls
+   Token caching for performance
+   Rate limiting for API protection
+```
+
+## 🧪 **Testing the Implementation**
+
+### **Verify Lazy Loading**
+```bash
+# Test without credentials
+unset MS_TENANT_ID MS_CLIENT_ID MS_CLIENT_SECRET
+npm run build
+npm start
+
+# Server should start successfully
+# Tools should be visible to discovery systems
+```
+
+### **Verify Authentication**
+```bash
+# Test with credentials
+export MS_TENANT_ID="your-tenant-id"
+export MS_CLIENT_ID="your-client-id"
+export MS_CLIENT_SECRET="your-client-secret"
+
+# Tools should execute successfully
+# API calls should work properly
+```
+
+## � **Migration Guide**
+
+### **For Existing Users**
+1. **No Changes Required** - Server works exactly as before when credentials are configured
+2. **New Capability** - Server now works without credentials for discovery
+3. **Enhanced Experience** - Better error messages and health check tool
+
+### **For New Users**
+1. **Easy Discovery** - Register server without setup requirements
+2. **Gradual Setup** - Configure authentication when ready to use tools
+3. **Clear Guidance** - Health check tool provides setup instructions
+
+## 🎉 **Summary**
+
+The lazy loading implementation ensures the M365 Core MCP Server is fully compatible with Smithery while maintaining security and functionality. Tools are discoverable without authentication, but actual Microsoft 365 operations still require proper credentials and permissions.
+
+**🎯 Key Achievement:** Server visibility and tool discovery work immediately, while authentication is enforced only when actually needed for Microsoft 365 API operations.
+
+**🚀 Result:** All 40+ tools are now visible on Smithery and ready for discovery and execution!
 
 ## 🛠 **Environment Variables**
 
