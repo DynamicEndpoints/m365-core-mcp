@@ -129,6 +129,7 @@ import { handleAuditReports } from './handlers/audit-reporting-handler.js';
 import { AuditReportArgs } from './types/compliance-types.js';
 
 import { handleExchangeSettings } from './exchange-handler.js';
+import { setupExtendedResources } from './extended-resources.js';
 
 // Environment validation - will be checked lazily when tools are executed
 const MS_TENANT_ID = process.env.MS_TENANT_ID ?? '';
@@ -946,10 +947,125 @@ export class M365CoreServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );        }
+      }
+    );    // URI template resources for dynamic access
+    this.server.resource(
+      'security_alert_details',
+      new ResourceTemplate('m365://security/alerts/{alertId}', { list: undefined }),
+      async (uri: URL, variables: any) => {
+        try {
+          const client = this.getGraphClient();
+          const alert = await client.api(`/security/alerts_v2/${variables?.alertId}`).get();
+          
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: 'application/json',
+                text: JSON.stringify(alert, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+    );    this.server.resource(
+      'device_details',
+      new ResourceTemplate('m365://devices/{deviceId}', { list: undefined }),
+      async (uri: URL, variables: any) => {
+        try {
+          const client = this.getGraphClient();
+          const device = await client.api(`/devices/${variables?.deviceId}`).get();
+          
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: 'application/json',
+                text: JSON.stringify(device, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+    );    this.server.resource(
+      'user_compliance',
+      new ResourceTemplate('m365://users/{userId}/compliance', { list: undefined }),
+      async (uri: URL, variables: any) => {
+        try {
+          const client = this.getGraphClient();
+          const compliance = await client.api(`/deviceManagement/managedDevices`)
+            .filter(`userId eq '${variables?.userId}'`)
+            .get();
+          
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: 'application/json',
+                text: JSON.stringify(compliance, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+    );    this.server.resource(
+      'team_governance',
+      new ResourceTemplate('m365://teams/{teamId}/governance', { list: undefined }),
+      async (uri: URL, variables: any) => {
+        try {
+          const client = this.getGraphClient();
+          const team = await client.api(`/teams/${variables?.teamId}`).get();
+          const members = await client.api(`/teams/${variables?.teamId}/members`).get();
+          const channels = await client.api(`/teams/${variables?.teamId}/channels`).get();
+          
+          const governance = {
+            team,
+            members,
+            channels,
+            governance: {
+              membershipType: team.memberSettings?.allowAddRemoveApps,
+              guestSettings: team.guestSettings,
+              funSettings: team.funSettings,
+              messagingSettings: team.messagingSettings
+            }
+          };
+          
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: 'application/json',
+                text: JSON.stringify(governance, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       }
     );
+
+    // Setup extended resources (40+ additional resources covering security, compliance, device management, and collaboration)
+    setupExtendedResources(this.server, this.getGraphClient());
   }
 
   // SSE and real-time capabilities
