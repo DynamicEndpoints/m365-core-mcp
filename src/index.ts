@@ -196,14 +196,12 @@ async function startServer() {
       req.on('aborted', () => {
         server.removeSSEClient(res);
       });
-    });
-
-    // Health check endpoint with full capabilities report
+    });    // Health check endpoint with full capabilities report
     app.get('/health', (req: Request, res: Response) => {
       res.json({
         status: 'healthy',
         server: 'M365 Core MCP Server',
-        version: '1.0.0',
+        version: '1.1.0', // Enhanced version with improved API capabilities
         capabilities: {
           tools: true,
           resources: true,
@@ -228,13 +226,11 @@ async function startServer() {
         activeOperations: server.progressTrackers?.size || 0,
         timestamp: new Date().toISOString()
       });
-    });
-
-    // Capabilities endpoint for MCP clients
+    });    // Capabilities endpoint for MCP clients
     app.get('/capabilities', (req: Request, res: Response) => {
       res.json({
         name: 'm365-core-server',
-        version: '1.0.0',
+        version: '1.1.0', // Enhanced version with improved API capabilities
         protocol: 'mcp',
         capabilities: {
           tools: {

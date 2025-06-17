@@ -160,8 +160,9 @@ export const azureAdSpSchema = z.object({
   filter: z.string().optional().describe('OData filter string'),
 });
 
-// Dynamic Microsoft API Calling
+// Dynamic Microsoft API Calling - Enhanced with performance and reliability features
 export const callMicrosoftApiSchema = z.object({
+  // Core API parameters (existing)
   apiType: z.enum(['graph', 'azure']).describe('API type: Microsoft Graph or Azure Resource Management'),
   path: z.string().describe('API URL path (e.g., \'/users\')'),
   method: z.enum(['get', 'post', 'put', 'patch', 'delete']).describe('HTTP method'),
@@ -169,7 +170,25 @@ export const callMicrosoftApiSchema = z.object({
   subscriptionId: z.string().optional().describe('Azure Subscription ID (for Azure APIs)'),
   queryParams: z.record(z.string()).optional().describe('Query parameters'),
   body: z.record(z.any()).optional().describe('Request body (for POST, PUT, PATCH)'),
-  consistencyLevel: z.string().optional().describe('Consistency level header (eventual, strong)'),
+  
+  // Graph API specific parameters (existing + enhanced)
+  graphApiVersion: z.enum(['v1.0', 'beta']).optional().default('v1.0').describe('Microsoft Graph API version to use (default: v1.0)'),
+  fetchAll: z.boolean().optional().default(false).describe('Set to true to automatically fetch all pages for list results (e.g., users, groups). Default is false.'),
+  consistencyLevel: z.string().optional().describe('Graph API ConsistencyLevel header. ADVISED to be set to \'eventual\' for Graph GET requests using advanced query parameters ($filter, $count, $search, $orderby).'),
+  
+  // Enhanced performance and reliability features
+  maxRetries: z.number().min(0).max(5).optional().default(3).describe('Maximum number of retries for failed requests (0-5, default: 3)'),
+  retryDelay: z.number().min(100).max(10000).optional().default(1000).describe('Base delay between retries in milliseconds (100-10000, default: 1000)'),
+  timeout: z.number().min(5000).max(300000).optional().default(30000).describe('Request timeout in milliseconds (5000-300000, default: 30000)'),
+  
+  // Customization features
+  customHeaders: z.record(z.string()).optional().describe('Additional custom headers to include in the request'),
+  responseFormat: z.enum(['json', 'raw', 'minimal']).optional().default('json').describe('Response format: \'json\' (full response), \'raw\' (as received), \'minimal\' (values only)'),
+  
+  // Graph API enhancement features
+  selectFields: z.array(z.string()).optional().describe('Array of specific fields to select (applies $select automatically for Graph API)'),
+  expandFields: z.array(z.string()).optional().describe('Array of fields to expand (applies $expand automatically for Graph API)'),
+  batchSize: z.number().min(1).max(1000).optional().default(100).describe('Batch size for pagination when fetchAll is true (1-1000, default: 100)'),
 });
 
 // Audit Log Search

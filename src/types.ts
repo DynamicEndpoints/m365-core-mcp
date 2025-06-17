@@ -159,8 +159,9 @@ export interface AzureAdSpArgs {
   filter?: string;
 }
 
-// Generic Microsoft API Call Types
+// Generic Microsoft API Call Types - Enhanced with performance and reliability features
 export interface CallMicrosoftApiArgs {
+  // Core API parameters (existing)
   apiType: 'graph' | 'azure';
   path: string;
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -168,9 +169,25 @@ export interface CallMicrosoftApiArgs {
   subscriptionId?: string;
   queryParams?: Record<string, string>;
   body?: any;
+  
+  // Graph API specific parameters (existing + enhanced)
   graphApiVersion?: 'v1.0' | 'beta';
   fetchAll?: boolean;
   consistencyLevel?: string;
+  
+  // Enhanced performance and reliability features
+  maxRetries?: number;
+  retryDelay?: number;
+  timeout?: number;
+  
+  // Customization features
+  customHeaders?: Record<string, string>;
+  responseFormat?: 'json' | 'raw' | 'minimal';
+  
+  // Graph API enhancement features
+  selectFields?: string[];
+  expandFields?: string[];
+  batchSize?: number;
 }
 
 // Audit Log Types

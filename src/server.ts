@@ -10,6 +10,73 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
+// Enhanced utility classes for improved performance and reliability
+class TokenCache {
+  private cache: { [key: string]: { token: string; expiresAt: number } } = {};
+
+  get(scope: string): string | null {
+    const now = Date.now();
+    const cached = this.cache[scope];
+    
+    if (cached && cached.expiresAt > now + 60000) { // 1 minute buffer
+      return cached.token;
+    }
+    
+    return null;
+  }
+
+  set(scope: string, token: string, expiresAt?: number): void {
+    const now = Date.now();
+    this.cache[scope] = {
+      token,
+      expiresAt: expiresAt || (now + 3600000) // 1 hour default
+    };
+  }
+
+  clear(scope?: string): void {
+    if (scope) {
+      delete this.cache[scope];
+    } else {
+      this.cache = {};
+    }
+  }
+}
+
+class RateLimiter {
+  private requests: number[] = [];
+  private readonly maxRequests: number;
+  private readonly windowMs: number;
+
+  constructor(maxRequests: number = 100, windowMs: number = 60000) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+  }
+
+  async checkLimit(): Promise<void> {
+    const now = Date.now();
+    this.requests = this.requests.filter(time => now - time < this.windowMs);
+    
+    if (this.requests.length >= this.maxRequests) {
+      const oldestRequest = Math.min(...this.requests);
+      const waitTime = this.windowMs - (now - oldestRequest);
+      console.log(`Rate limit reached, waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.requests.push(now);
+  }
+
+  getStats(): { current: number; max: number; windowMs: number } {
+    const now = Date.now();
+    this.requests = this.requests.filter(time => now - time < this.windowMs);
+    return {
+      current: this.requests.length,
+      max: this.maxRequests,
+      windowMs: this.windowMs
+    };
+  }
+}
+
 import {
   UserManagementArgs,
   OffboardingArgs,
@@ -173,10 +240,13 @@ export class M365CoreServer {
   private tokenCache: Map<string, { token: string; expiresOn: number }> = new Map();
   public sseClients: Set<any> = new Set();
   public progressTrackers: Map<string, any> = new Map();
-    constructor() {
-    this.server = new McpServer({
+  
+  // Enhanced utility instances
+  private enhancedTokenCache: TokenCache = new TokenCache();
+  private rateLimiter: RateLimiter = new RateLimiter();
+    constructor() {    this.server = new McpServer({
       name: 'm365-core-server',
-      version: '1.0.0',
+      version: '1.1.0', // Enhanced version with improved API capabilities
       capabilities: {
         tools: {
           listChanged: true
@@ -519,15 +589,21 @@ export class M365CoreServer {
             `Error executing manage_service_principals: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
-      })
-    );    // Microsoft API Call - Enhanced with lazy loading and better error handling
+      })    );    // Microsoft API Call - Enhanced with performance and reliability features
     this.server.tool(
       "dynamicendpoints m365 assistant",
       callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
         this.validateCredentials();
         try {
-          return await handleCallMicrosoftApi(this.getGraphClient(), args, this.getAccessToken.bind(this), apiConfigs);
+          return await handleCallMicrosoftApi(
+            this.getGraphClient(), 
+            args, 
+            this.getAccessToken.bind(this), 
+            apiConfigs,
+            this.rateLimiter,
+            this.enhancedTokenCache
+          );
         } catch (error) {
           if (error instanceof McpError) {
             throw error;

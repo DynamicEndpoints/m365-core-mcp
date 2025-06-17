@@ -573,252 +573,376 @@ export async function handleServicePrincipals(
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
-// Generic API Call Handler
+// Generic API Call Handler - Enhanced with performance and reliability features
 export async function handleCallMicrosoftApi(
   graphClient: Client,
   args: CallMicrosoftApiArgs,
   getAccessToken: (scope: string) => Promise<string>,
-  apiConfigs: any
+  apiConfigs: any,
+  rateLimiter?: any,
+  tokenCache?: any
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
-  try {
-    const { 
-      apiType, 
-      path, 
-      method, 
-      apiVersion, 
-      subscriptionId, 
-      queryParams, 
-      body, 
-      graphApiVersion = 'v1.0', 
-      fetchAll = false,
-      consistencyLevel
-    } = args;
+  const startTime = Date.now();
+  
+  // Extract parameters with defaults
+  const { 
+    apiType, 
+    path, 
+    method, 
+    apiVersion, 
+    subscriptionId, 
+    queryParams = {}, 
+    body, 
+    graphApiVersion = 'v1.0', 
+    fetchAll = false,
+    consistencyLevel,
+    maxRetries = 3,
+    retryDelay = 1000,
+    timeout = 30000,
+    customHeaders = {},
+    responseFormat = 'json',
+    selectFields,
+    expandFields,
+    batchSize = 100
+  } = args;
 
+  console.log(`Executing enhanced Microsoft API call: apiType=${apiType}, path=${path}, method=${method}, maxRetries=${maxRetries}, timeout=${timeout}ms`);
+  
+  // Apply rate limiting if available
+  if (rateLimiter) {
+    await rateLimiter.checkLimit();
+  }
+
+  let determinedUrl: string | undefined;
+
+  // Enhanced token caching helper
+  const getTokenWithCache = async (scope: string): Promise<string> => {
+    if (tokenCache) {
+      const cached = tokenCache.get(scope);
+      if (cached) {
+        return cached;
+      }
+    }
+    
+    const token = await getAccessToken(scope);
+    
+    if (tokenCache) {
+      tokenCache.set(scope, token);
+    }
+    
+    return token;
+  };
+
+  // Auto-apply selectFields and expandFields for Graph API
+  if (apiType === 'graph') {
+    if (selectFields && selectFields.length > 0) {
+      queryParams['$select'] = selectFields.join(',');
+      console.log(`Applied $select: ${queryParams['$select']}`);
+    }
+    if (expandFields && expandFields.length > 0) {
+      queryParams['$expand'] = expandFields.join(',');
+      console.log(`Applied $expand: ${queryParams['$expand']}`);
+    }
+    if (fetchAll && batchSize !== 100) {
+      queryParams['$top'] = batchSize.toString();
+      console.log(`Applied batch size: ${batchSize}`);
+    }
+  }
+
+  // Retry logic wrapper with exponential backoff
+  const executeWithRetry = async (operation: () => Promise<any>): Promise<any> => {
+    let lastError: any;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
+          console.log(`Retry attempt ${attempt}/${maxRetries}, waiting ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        
+        // Don't retry on authentication errors or 4xx client errors (except 429)
+        if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500 && error.statusCode !== 429) {
+          throw error;
+        }
+        
+        if (attempt === maxRetries) {
+          console.error(`All retry attempts exhausted for ${apiType} ${method} ${path}`);
+          throw error;
+        }
+        
+        console.warn(`Attempt ${attempt + 1} failed, will retry:`, error.message);
+      }
+    }
+    
+    throw lastError;
+  };
+
+  try {
     if (apiType === 'azure' && !apiVersion) {
       throw new McpError(ErrorCode.InvalidParams, "apiVersion is required for apiType 'azure'");
     }
 
-    let determinedUrl: string;
     let responseData: any;
 
-    // --- Microsoft Graph Logic ---
+    // --- Microsoft Graph Logic (Enhanced) ---
     if (apiType === 'graph') {
       determinedUrl = `https://graph.microsoft.com/${graphApiVersion}`;
       
-      // Use the Graph SDK client for Graph API calls
-      let request = graphClient.api(path).version(graphApiVersion);
-      
-      // Add query parameters if provided
-      if (queryParams && Object.keys(queryParams).length > 0) {
-        request = request.query(queryParams);
-      }
-      
-      // Add ConsistencyLevel header if provided
-      if (consistencyLevel) {
-        request = request.header('ConsistencyLevel', consistencyLevel);
-        console.log(`Added ConsistencyLevel header: ${consistencyLevel}`);
-      }
-      
-      // Handle different methods
-      switch (method.toLowerCase()) {
-        case 'get':
-          if (fetchAll) {
-            console.log(`Fetching all pages for Graph path: ${path}`);
-            
-            // Initialize with empty array for collecting all items
-            let allItems: any[] = [];
-            let nextLink: string | null | undefined = null;
-            
-            // Get first page
-            const firstPageResponse = await request.get();
-            
-            // Store context from first page
-            const odataContext = firstPageResponse['@odata.context'];
-            
-            // Add items from first page
-            if (firstPageResponse.value && Array.isArray(firstPageResponse.value)) {
-              allItems = [...firstPageResponse.value];
-            }
-            
-            // Get nextLink from first page
-            nextLink = firstPageResponse['@odata.nextLink'];
-            
-            // Fetch subsequent pages
-            while (nextLink) {
-              console.log(`Fetching next page: ${nextLink}`);
+      responseData = await executeWithRetry(async () => {
+        let request = graphClient.api(path).version(graphApiVersion);
+        
+        // Add query parameters if provided
+        if (Object.keys(queryParams).length > 0) {
+          request = request.query(queryParams);
+        }
+        
+        // Add ConsistencyLevel header if provided
+        if (consistencyLevel) {
+          request = request.header('ConsistencyLevel', consistencyLevel);
+          console.log(`Added ConsistencyLevel header: ${consistencyLevel}`);
+        }
+          // Add custom headers
+        Object.entries(customHeaders).forEach(([key, value]) => {
+          request = request.header(key, value);
+        });
+
+        // Note: Graph SDK doesn't support timeout directly, but we can implement AbortController for timeout
+        
+        // Handle different methods
+        switch (method.toLowerCase()) {
+          case 'get':
+            if (fetchAll) {
+              console.log(`Fetching all pages for Graph path: ${path} with batch size: ${batchSize}`);
               
-              // Create a new request for the next page
-              const nextPageResponse = await graphClient.api(nextLink).get();
+              // Initialize with empty array for collecting all items
+              let allItems: any[] = [];
+              let nextLink: string | null | undefined = null;
               
-              // Add items from next page
-              if (nextPageResponse.value && Array.isArray(nextPageResponse.value)) {
-                allItems = [...allItems, ...nextPageResponse.value];
+              // Get first page
+              const firstPageResponse = await request.get();
+              
+              // Store context from first page
+              const odataContext = firstPageResponse['@odata.context'];
+              
+              // Add items from first page
+              if (firstPageResponse.value && Array.isArray(firstPageResponse.value)) {
+                allItems = [...firstPageResponse.value];
               }
               
-              // Update nextLink
-              nextLink = nextPageResponse['@odata.nextLink'];
+              // Get nextLink from first page
+              nextLink = firstPageResponse['@odata.nextLink'];
+              
+              // Fetch subsequent pages
+              while (nextLink) {
+                console.log(`Fetching next page: ${nextLink}`);
+                  // Create a new request for the next page
+                const nextPageResponse = await graphClient.api(nextLink).get();
+                
+                // Add items from next page
+                if (nextPageResponse.value && Array.isArray(nextPageResponse.value)) {
+                  allItems = [...allItems, ...nextPageResponse.value];
+                }
+                
+                // Update nextLink
+                nextLink = nextPageResponse['@odata.nextLink'];
+              }
+              
+              // Construct final response
+              return {
+                '@odata.context': odataContext,
+                value: allItems,
+                totalCount: allItems.length,
+                fetchedAt: new Date().toISOString()
+              };
+            } else {
+              console.log(`Fetching single page for Graph path: ${path}`);
+              return await request.get();
             }
-            
-            // Construct final response
-            responseData = {
-              '@odata.context': odataContext,
-              value: allItems
-            };
-            
-            console.log(`Finished fetching all Graph pages. Total items: ${allItems.length}`);
-          } else {
-            console.log(`Fetching single page for Graph path: ${path}`);
-            responseData = await request.get();
-          }
-          break;
-        case 'post':
-          responseData = await request.post(body ?? {});
-          break;
-        case 'put':
-          responseData = await request.put(body ?? {});
-          break;
-        case 'patch':
-          responseData = await request.patch(body ?? {});
-          break;
-        case 'delete':
-          responseData = await request.delete();
-          // Handle potential 204 No Content response
-          if (responseData === undefined || responseData === null) {
-            responseData = { status: "Success (No Content)" };
-          }
-          break;
-        default:
-          throw new Error(`Unsupported method: ${method}`);
-      }
+          case 'post':
+            return await request.post(body ?? {});
+          case 'put':
+            return await request.put(body ?? {});
+          case 'patch':
+            return await request.patch(body ?? {});
+          case 'delete':
+            const deleteResult = await request.delete();
+            // Handle potential 204 No Content response
+            return deleteResult === undefined || deleteResult === null 
+              ? { status: "Success (No Content)", deletedAt: new Date().toISOString() } 
+              : deleteResult;
+          default:
+            throw new Error(`Unsupported method: ${method}`);
+        }
+      });
     }
-    // --- Azure Resource Management Logic ---
+    // --- Azure Resource Management Logic (Enhanced) ---
     else { // apiType === 'azure'
       determinedUrl = "https://management.azure.com";
       
-      const config = apiConfigs[apiType];
-      const token = await getAccessToken(config.scope);
-      
-      let url = determinedUrl;
-      if (subscriptionId) {
-        url += `/subscriptions/${subscriptionId}`;
-      }
-      url += path.startsWith('/') ? path : `/${path}`;
-      
-      const urlParams = new URLSearchParams();
-      urlParams.append('api-version', apiVersion!);
-      
-      if (queryParams) {
-        for (const [key, value] of Object.entries(queryParams)) {
+      responseData = await executeWithRetry(async () => {
+        const token = await getTokenWithCache("https://management.azure.com/.default");
+        
+        let url = determinedUrl!;
+        if (subscriptionId) {
+          url += `/subscriptions/${subscriptionId}`;
+        }
+        url += path.startsWith('/') ? path : `/${path}`;
+        
+        const urlParams = new URLSearchParams();
+        urlParams.append('api-version', apiVersion!);
+        
+        Object.entries(queryParams).forEach(([key, value]) => {
           urlParams.append(key, value);
+        });
+        
+        url += `?${urlParams.toString()}`;
+        
+        // Prepare request options
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...customHeaders
+        };
+        
+        const requestOptions: RequestInit = {
+          method: method.toUpperCase(),
+          headers: headers,
+          signal: AbortSignal.timeout(timeout)
+        };
+        
+        if (["POST", "PUT", "PATCH"].includes(method.toUpperCase()) && body !== undefined) {
+          requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
         }
-      }
-      
-      url += `?${urlParams.toString()}`;
-      
-      // Prepare request options
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      
-      const requestOptions: RequestInit = {
-        method: method.toUpperCase(),
-        headers: headers
-      };
-      
-      if (["POST", "PUT", "PATCH"].includes(method.toUpperCase()) && body !== undefined) {
-        requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
-      }
-      
-      // --- Pagination Logic for Azure RM ---
-      if (fetchAll && method.toLowerCase() === 'get') {
-        console.log(`Fetching all pages for Azure RM starting from: ${url}`);
         
-        let allValues: any[] = [];
-        let currentUrl: string | null = url;
-        
-        while (currentUrl) {
-          console.log(`Fetching Azure RM page: ${currentUrl}`);
+        // --- Pagination Logic for Azure RM ---
+        if (fetchAll && method.toLowerCase() === 'get') {
+          console.log(`Fetching all pages for Azure RM starting from: ${url}`);
           
-          // Re-acquire token for each page (Azure tokens might expire)
-          const currentPageToken = await getAccessToken(config.scope);
-          const currentPageHeaders = { ...headers, 'Authorization': `Bearer ${currentPageToken}` };
-          const currentPageRequestOptions: RequestInit = { 
-            method: 'GET', 
-            headers: currentPageHeaders 
+          let allValues: any[] = [];
+          let currentUrl: string | null = url;
+          
+          while (currentUrl) {
+            console.log(`Fetching Azure RM page: ${currentUrl}`);
+            
+            // Re-acquire token for each page (Azure tokens might expire)
+            const currentPageToken = await getTokenWithCache("https://management.azure.com/.default");
+            const currentPageHeaders = { ...headers, 'Authorization': `Bearer ${currentPageToken}` };
+            const currentPageRequestOptions: RequestInit = { 
+              method: 'GET', 
+              headers: currentPageHeaders,
+              signal: AbortSignal.timeout(timeout)
+            };
+            
+            const pageResponse = await fetch(currentUrl, currentPageRequestOptions);
+            const pageText = await pageResponse.text();
+            
+            let pageData: any;
+            try {
+              pageData = pageText ? JSON.parse(pageText) : {};
+            } catch (e) {
+              console.error(`Failed to parse JSON from Azure RM page: ${currentUrl}`, pageText);
+              pageData = { rawResponse: pageText };
+            }
+            
+            if (!pageResponse.ok) {
+              console.error(`API error on Azure RM page ${currentUrl}:`, pageData);
+              throw new Error(`API error (${pageResponse.status}) during Azure RM pagination on ${currentUrl}: ${JSON.stringify(pageData)}`);
+            }
+            
+            if (pageData.value && Array.isArray(pageData.value)) {
+              allValues = allValues.concat(pageData.value);
+            } else if (currentUrl === url && !pageData.nextLink) {
+              // If this is the first page and there's no nextLink, it might be a single resource
+              allValues.push(pageData);
+            }
+            
+            currentUrl = pageData.nextLink || null; // Azure uses nextLink
+          }
+          
+          return { 
+            value: allValues, 
+            totalCount: allValues.length,
+            fetchedAt: new Date().toISOString()
           };
+        } else {
+          // Single page fetch for Azure RM
+          console.log(`Fetching single page for Azure RM: ${url}`);
           
-          const pageResponse = await fetch(currentUrl, currentPageRequestOptions);
-          const pageText = await pageResponse.text();
+          const apiResponse = await fetch(url, requestOptions);
+          const responseText = await apiResponse.text();
           
-          let pageData: any;
           try {
-            pageData = pageText ? JSON.parse(pageText) : {};
+            const data = responseText ? JSON.parse(responseText) : {};
+            if (!apiResponse.ok) {
+              throw new Error(`API error (${apiResponse.status}): ${JSON.stringify(data)}`);
+            }
+            return data;
           } catch (e) {
-            console.error(`Failed to parse JSON from Azure RM page: ${currentUrl}`, pageText);
-            pageData = { rawResponse: pageText };
+            if (!apiResponse.ok) {
+              throw new Error(`API error (${apiResponse.status}): ${responseText}`);
+            }
+            return { rawResponse: responseText };
           }
-          
-          if (!pageResponse.ok) {
-            console.error(`API error on Azure RM page ${currentUrl}:`, pageData);
-            throw new Error(`API error (${pageResponse.status}) during Azure RM pagination on ${currentUrl}: ${JSON.stringify(pageData)}`);
-          }
-          
-          if (pageData.value && Array.isArray(pageData.value)) {
-            allValues = allValues.concat(pageData.value);
-          } else if (currentUrl === url && !pageData.nextLink) {
-            // If this is the first page and there's no nextLink, it might be a single resource
-            allValues.push(pageData);
-          }
-          
-          currentUrl = pageData.nextLink || null; // Azure uses nextLink
         }
-        
-        responseData = { value: allValues };
-        console.log(`Finished fetching all Azure RM pages. Total items: ${allValues.length}`);
-      } else {
-        // Single page fetch for Azure RM
-        console.log(`Fetching single page for Azure RM: ${url}`);
-        
-        const apiResponse = await fetch(url, requestOptions);
-        const responseText = await apiResponse.text();
-        
-        try {
-          responseData = responseText ? JSON.parse(responseText) : {};
-        } catch (e) {
-          console.error(`Failed to parse JSON from single Azure RM page: ${url}`, responseText);
-          responseData = { rawResponse: responseText };
+      });
+    }
+
+    // --- Enhanced Response Formatting ---
+    const executionTime = Date.now() - startTime;
+    let resultText = "";
+
+    switch (responseFormat) {
+      case "minimal":
+        if (responseData && responseData.value && Array.isArray(responseData.value)) {
+          resultText = JSON.stringify(responseData.value, null, 2);
+        } else if (responseData && typeof responseData === 'object') {
+          // Extract just the data, excluding metadata
+          const { '@odata.context': _, '@odata.nextLink': __, ...cleanData } = responseData;
+          resultText = JSON.stringify(cleanData, null, 2);
+        } else {
+          resultText = JSON.stringify(responseData, null, 2);
         }
-        
-        if (!apiResponse.ok) {
-          console.error(`API error for Azure RM ${method} ${path}:`, responseData);
-          throw new Error(`API error (${apiResponse.status}) for Azure RM: ${JSON.stringify(responseData)}`);
+        break;
+      case "raw":
+        resultText = JSON.stringify(responseData);
+        break;
+      default: // "json"
+        resultText = `Result for ${apiType} API (${apiType === 'graph' ? graphApiVersion : apiVersion}) - ${method.toUpperCase()} ${path}:\n`;
+        resultText += `Execution time: ${executionTime}ms\n`;
+        if (fetchAll && responseData.totalCount !== undefined) {
+          resultText += `Total items fetched: ${responseData.totalCount}\n`;
         }
+        resultText += `\n${JSON.stringify(responseData, null, 2)}`;
+        break;
+    }
+
+    // Add pagination note for single-page requests
+    if (!fetchAll && method.toLowerCase() === 'get' && responseFormat === 'json') {
+      const nextLinkKey = apiType === 'graph' ? '@odata.nextLink' : 'nextLink';
+      if (responseData && responseData[nextLinkKey]) {
+        resultText += `\n\nNote: More results are available. To retrieve all pages, add 'fetchAll: true' to your request.`;
       }
     }
 
-    // --- Format and Return Result ---
-    let resultText = `Result for ${apiType} API (${apiType === 'graph' ? graphApiVersion : apiVersion}) - ${method} ${path}:\n\n`;
-    resultText += JSON.stringify(responseData, null, 2);
-    
-    // Add pagination note if applicable (only for single page GET)
-    if (!fetchAll && method.toLowerCase() === 'get') {
-      const nextLinkKey = apiType === 'graph' ? '@odata.nextLink' : 'nextLink';
-      if (responseData && responseData[nextLinkKey]) {
-        resultText += `\n\nNote: More results are available. To retrieve all pages, add the parameter 'fetchAll: true' to your request.`;
-      }
-    }
-    
     return {
       content: [{ type: "text", text: resultText }],
     };
+
   } catch (error) {
-    console.error("Error in handleCallMicrosoftApi:", error);
+    const executionTime = Date.now() - startTime;
+    console.error(`Error in enhanced Microsoft API call (apiType: ${apiType}, path: ${path}, method: ${method}, executionTime: ${executionTime}ms):`, error);
     
     // Try to determine the base URL even in case of error
-    const determinedUrl = args.apiType === 'graph'
-      ? `https://graph.microsoft.com/${args.graphApiVersion || 'v1.0'}`
-      : "https://management.azure.com";
+    if (!determinedUrl) {
+      determinedUrl = apiType === 'graph'
+        ? `https://graph.microsoft.com/${graphApiVersion}`
+        : "https://management.azure.com";
+    }
     
     // Include error body if available
     let errorBody = 'N/A';
@@ -843,7 +967,10 @@ export async function handleCallMicrosoftApi(
           error: error instanceof Error ? error.message : String(error),
           statusCode: statusCode,
           errorBody: errorBody,
-          attemptedBaseUrl: determinedUrl
+          attemptedBaseUrl: determinedUrl,
+          executionTime: executionTime,
+          retryAttempts: maxRetries,
+          timestamp: new Date().toISOString()
         }, null, 2),
       }],
       isError: true
