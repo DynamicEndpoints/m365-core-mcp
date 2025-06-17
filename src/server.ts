@@ -155,19 +155,28 @@ export class M365CoreServer {
   private tokenCache: Map<string, { token: string; expiresOn: number }> = new Map();
   public sseClients: Set<any> = new Set();
   public progressTrackers: Map<string, any> = new Map();
-  
-  constructor() {
+    constructor() {
     this.server = new McpServer({
       name: 'm365-core-server',
       version: '1.0.0',
       capabilities: {
-        tools: {},
+        tools: {
+          listChanged: true
+        },
         resources: {
           subscribe: true,
           listChanged: true
         },
-        prompts: {},
-        logging: {}
+        prompts: {
+          listChanged: true
+        },
+        logging: {
+          level: 'info'
+        },
+        experimental: {
+          progressReporting: true,
+          streamingResponses: true
+        }
       }
     });
 
@@ -253,14 +262,13 @@ export class M365CoreServer {
         `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }
-
-  private setupTools(): void {
-    // Distribution Lists
+  }  private setupTools(): void {
+    // Distribution Lists - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_distribution_lists",
       distributionListSchema.shape,
       wrapToolHandler(async (args: DistributionListArgs) => {
+        // Lazy loading: Validate credentials only when tool is executed
         this.validateCredentials();
         try {
           return await handleDistributionLists(this.getGraphClient(), args);
@@ -270,13 +278,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_distribution_lists: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Security Groups
+    // Security Groups - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_security_groups",
       securityGroupSchema.shape,
@@ -290,13 +298,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_security_groups: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // M365 Groups
+    // M365 Groups - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_m365_groups",
       m365GroupSchema.shape,
@@ -310,13 +318,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_m365_groups: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Exchange Settings
+    // Exchange Settings - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_exchange_settings",
       exchangeSettingsSchema.shape,
@@ -330,13 +338,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_exchange_settings: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // User Management
+    // User Management - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_user_settings",
       userManagementSchema.shape,
@@ -350,13 +358,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_user_settings: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Offboarding
+    // Offboarding - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_offboarding",
       offboardingSchema.shape,
@@ -370,13 +378,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_offboarding: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // SharePoint Sites
+    // SharePoint Sites - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_sharepoint_sites",
       sharePointSiteSchema.shape,
@@ -390,13 +398,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_sharepoint_sites: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // SharePoint Lists
+    // SharePoint Lists - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_sharepoint_lists",
       sharePointListSchema.shape,
@@ -410,13 +418,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_sharepoint_lists: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Azure AD Roles
+    // Azure AD Roles - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_roles",
       azureAdRoleSchema.shape,
@@ -430,13 +438,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_azuread_roles: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Azure AD Apps
+    // Azure AD Apps - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_apps",
       azureAdAppSchema.shape,
@@ -450,13 +458,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_azuread_apps: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Azure AD Devices
+    // Azure AD Devices - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_devices",
       azureAdDeviceSchema.shape,
@@ -470,13 +478,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_azuread_devices: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Service Principals
+    // Service Principals - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_service_principals",
       azureAdSpSchema.shape,
@@ -490,13 +498,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_service_principals: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Microsoft API Call
+    // Microsoft API Call - Enhanced with lazy loading and better error handling
     this.server.tool(
       "call_microsoft_api",
       callMicrosoftApiSchema.shape,
@@ -510,13 +518,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing call_microsoft_api: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Audit Log Search
+    // Audit Log Search - Enhanced with lazy loading and better error handling
     this.server.tool(
       "search_audit_log",
       auditLogSchema.shape,
@@ -530,13 +538,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing search_audit_log: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Alert Management
+    // Alert Management - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_alerts",
       alertSchema.shape,
@@ -550,13 +558,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_alerts: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // DLP Policies
+    // DLP Policies - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_dlp_policies",
       dlpPolicySchema.shape,
@@ -570,13 +578,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_dlp_policies: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // DLP Incidents
+    // DLP Incidents - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_dlp_incidents",
       dlpIncidentSchema.shape,
@@ -590,13 +598,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_dlp_incidents: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Sensitivity Labels
+    // Sensitivity Labels - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_sensitivity_labels",
       sensitivityLabelSchema.shape,
@@ -610,13 +618,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_sensitivity_labels: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Intune macOS Devices
+    // Intune macOS Devices - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_devices",
       intuneMacOSDeviceSchema.shape,
@@ -630,13 +638,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_intune_macos_devices: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Intune macOS Policies
+    // Intune macOS Policies - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_policies",
       intuneMacOSPolicySchema.shape,
@@ -650,13 +658,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_intune_macos_policies: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Intune macOS Apps
+    // Intune macOS Apps - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_apps",
       intuneMacOSAppSchema.shape,
@@ -670,13 +678,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_intune_macos_apps: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Intune macOS Compliance
+    // Intune macOS Compliance - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_compliance",
       intuneMacOSComplianceSchema.shape,
@@ -690,13 +698,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_intune_macos_compliance: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Compliance Frameworks
+    // Compliance Frameworks - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_compliance_frameworks",
       complianceFrameworkSchema.shape,
@@ -710,13 +718,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_compliance_frameworks: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Compliance Assessments
+    // Compliance Assessments - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_compliance_assessments",
       complianceAssessmentSchema.shape,
@@ -730,13 +738,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_compliance_assessments: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Compliance Monitoring
+    // Compliance Monitoring - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_compliance_monitoring",
       complianceMonitoringSchema.shape,
@@ -750,13 +758,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_compliance_monitoring: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Evidence Collection
+    // Evidence Collection - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_evidence_collection",
       evidenceCollectionSchema.shape,
@@ -770,13 +778,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_evidence_collection: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Gap Analysis
+    // Gap Analysis - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_gap_analysis",
       gapAnalysisSchema.shape,
@@ -790,13 +798,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_gap_analysis: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // Audit Reports
+    // Audit Reports - Enhanced with lazy loading and better error handling
     this.server.tool(
       "generate_audit_reports",
       auditReportSchema.shape,
@@ -810,13 +818,13 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing generate_audit_reports: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
     );
 
-    // CIS Compliance
+    // CIS Compliance - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_cis_compliance",
       cisComplianceSchema.shape,
@@ -830,7 +838,7 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing manage_cis_compliance: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })

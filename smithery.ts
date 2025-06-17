@@ -107,71 +107,148 @@ export const tools = [
       type: 'object',
       properties: {
         endpoint: { type: 'string', description: 'API endpoint URL' },
-        method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], description: 'HTTP method' },
-        body: { type: 'object', description: 'Request body for POST/PUT/PATCH requests' },
+        method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], description: 'HTTP method' },        body: { type: 'object', description: 'Request body for POST/PUT/PATCH requests' },
         apiType: { type: 'string', enum: ['graph', 'azure'], description: 'API type (graph or azure)' }
-      },      required: ['endpoint', 'method', 'apiType']
+      },
+      required: ['endpoint', 'method', 'apiType']
     }
   },
   {
     name: 'manage_offboarding',
     description: 'Automate user offboarding processes - disable accounts, backup data, transfer ownership',
     category: 'User Management',
-    tags: ['offboarding', 'security', 'data-transfer', 'lifecycle']
+    tags: ['offboarding', 'security', 'data-transfer', 'lifecycle'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        userPrincipalName: { type: 'string', description: 'User principal name to offboard' },
+        transferMailboxTo: { type: 'string', description: 'User to transfer mailbox ownership to' },
+        transferOneDriveTo: { type: 'string', description: 'User to transfer OneDrive ownership to' },
+        disableAccount: { type: 'boolean', description: 'Whether to disable the user account' }
+      },
+      required: ['userPrincipalName']
+    }
   },
   {
     name: 'manage_sharepoint_sites',
     description: 'Manage SharePoint sites - create, configure, and manage site settings and permissions',
     category: 'SharePoint',
-    tags: ['sharepoint', 'sites', 'collaboration', 'content-management']
+    tags: ['sharepoint', 'sites', 'collaboration', 'content-management'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'get'] },
+        title: { type: 'string', description: 'Site title' },
+        url: { type: 'string', description: 'Site URL' },
+        template: { type: 'string', description: 'Site template' }
+      },
+      required: ['action']
+    }
   },
   {
     name: 'manage_sharepoint_lists',
     description: 'Manage SharePoint lists and libraries - create, configure, and manage list items',
     category: 'SharePoint',
-    tags: ['sharepoint', 'lists', 'data-management', 'content']
-  },
-  {
-    name: 'manage_azure_ad_roles',
+    tags: ['sharepoint', 'lists', 'data-management', 'content'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'get'] },
+        siteId: { type: 'string', description: 'SharePoint site ID' },
+        title: { type: 'string', description: 'List title' },
+        description: { type: 'string', description: 'List description' }
+      },
+      required: ['action']
+    }
+  },  {
+    name: 'manage_azuread_roles',
     description: 'Manage Azure AD directory roles - assign, remove, and list role assignments',
     category: 'Azure AD',
-    tags: ['roles', 'permissions', 'rbac', 'azure-ad']
+    tags: ['roles', 'permissions', 'rbac', 'azure-ad'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['assign', 'remove', 'list'] },
+        roleName: { type: 'string', description: 'Directory role name' },
+        userPrincipalName: { type: 'string', description: 'User to assign/remove role' }
+      },
+      required: ['action']
+    }
   },
   {
-    name: 'manage_azure_ad_apps',
+    name: 'manage_azuread_apps',
     description: 'Manage Azure AD application registrations - create, update, and manage app permissions',
     category: 'Azure AD',
-    tags: ['applications', 'app-registrations', 'azure-ad', 'oauth']
+    tags: ['applications', 'app-registrations', 'azure-ad', 'oauth'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'get'] },
+        displayName: { type: 'string', description: 'Application display name' },
+        appId: { type: 'string', description: 'Application ID' }
+      },
+      required: ['action']
+    }
   },
   {
-    name: 'manage_azure_ad_devices',
+    name: 'manage_azuread_devices',
     description: 'Manage Azure AD registered devices - enable, disable, delete, and monitor devices',
     category: 'Azure AD',
-    tags: ['devices', 'device-management', 'azure-ad', 'security']
+    tags: ['devices', 'device-management', 'azure-ad', 'security'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['enable', 'disable', 'delete', 'list', 'get'] },
+        deviceId: { type: 'string', description: 'Device ID' },
+        displayName: { type: 'string', description: 'Device display name' }
+      },
+      required: ['action']
+    }
   },
   {
     name: 'manage_service_principals',
     description: 'Manage Azure AD service principals - create, update, and manage service principal permissions',
     category: 'Azure AD',
-    tags: ['service-principals', 'applications', 'azure-ad', 'automation']
-  },
-  {
-    name: 'call_microsoft_api',
-    description: 'Dynamic API endpoint for calling any Microsoft Graph or Azure Resource Management API',
-    category: 'API Access',
-    tags: ['graph-api', 'azure-api', 'dynamic', 'automation']
+    tags: ['service-principals', 'applications', 'azure-ad', 'automation'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'get'] },
+        appId: { type: 'string', description: 'Application ID' },
+        displayName: { type: 'string', description: 'Service principal display name' }
+      },
+      required: ['action']
+    }
   },
   {
     name: 'search_audit_log',
     description: 'Search and analyze Azure AD unified audit logs for compliance and security monitoring',
     category: 'Security & Compliance',
-    tags: ['audit-logs', 'compliance', 'security', 'monitoring']
+    tags: ['audit-logs', 'compliance', 'security', 'monitoring'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        startDate: { type: 'string', description: 'Start date for audit log search' },
+        endDate: { type: 'string', description: 'End date for audit log search' },
+        operations: { type: 'array', items: { type: 'string' }, description: 'Operations to search for' }
+      },
+      required: ['startDate', 'endDate']
+    }
   },
   {
     name: 'manage_alerts',
     description: 'Manage and respond to Microsoft security alerts from various security products',
     category: 'Security & Compliance',
-    tags: ['security-alerts', 'incident-response', 'monitoring', 'threat-detection']
+    tags: ['security-alerts', 'incident-response', 'monitoring', 'threat-detection'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'get', 'update', 'dismiss'] },
+        alertId: { type: 'string', description: 'Alert ID' },
+        status: { type: 'string', description: 'Alert status' }
+      },
+      required: ['action']
+    }
   },
 
   // DLP and Information Protection Tools
