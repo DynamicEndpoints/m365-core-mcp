@@ -295,6 +295,88 @@ export const intuneMacOSComplianceSchema = z.object({
   policies: z.array(z.string()).optional().describe('Specific policy IDs to assess'),
 });
 
+// Intune Windows Management
+export const intuneWindowsDeviceSchema = z.object({
+  action: z.enum(['list', 'get', 'enroll', 'retire', 'wipe', 'restart', 'sync', 'remote_lock', 'collect_logs', 'bitlocker_recovery', 'autopilot_reset']).describe('Intune Windows device management action'),
+  deviceId: z.string().optional().describe('Device ID for device-specific operations'),
+  filter: z.string().optional().describe('OData filter for device listing'),
+  enrollmentType: z.enum(['AzureADJoin', 'HybridAzureADJoin', 'AutoPilot', 'BulkEnrollment']).optional().describe('Windows enrollment type'),
+  assignmentTarget: z.object({
+    groupIds: z.array(z.string()).optional().describe('Target group IDs'),
+    userIds: z.array(z.string()).optional().describe('Target user IDs'),
+    deviceIds: z.array(z.string()).optional().describe('Target device IDs'),
+  }).optional().describe('Assignment target'),
+  bitlockerSettings: z.object({
+    requireBitlockerEncryption: z.boolean().optional().describe('Require BitLocker encryption'),
+    allowBitlockerRecoveryKeyBackup: z.boolean().optional().describe('Allow recovery key backup'),
+  }).optional().describe('BitLocker configuration'),
+});
+
+export const intuneWindowsPolicySchema = z.object({
+  action: z.enum(['list', 'get', 'create', 'update', 'delete', 'assign', 'deploy']).describe('Intune Windows policy management action'),
+  policyId: z.string().optional().describe('Policy ID for policy-specific operations'),
+  policyType: z.enum(['Configuration', 'Compliance', 'Security', 'Update', 'AppProtection', 'EndpointSecurity']).describe('Type of Windows policy'),
+  name: z.string().optional().describe('Policy name'),
+  description: z.string().optional().describe('Policy description'),
+  settings: z.record(z.any()).optional().describe('Policy configuration settings'),
+  assignments: z.array(z.object({
+    target: z.object({
+      deviceAndAppManagementAssignmentFilterId: z.string().optional().describe('Filter ID'),
+      deviceAndAppManagementAssignmentFilterType: z.enum(['none', 'include', 'exclude']).optional().describe('Filter type'),
+      groupId: z.string().optional().describe('Group ID'),
+      collectionId: z.string().optional().describe('Collection ID'),
+    }).describe('Assignment target'),
+    intent: z.enum(['apply', 'remove']).optional().describe('Assignment intent'),
+    settings: z.record(z.any()).optional().describe('Assignment settings'),
+  })).optional().describe('Policy assignments'),
+  deploymentSettings: z.object({
+    installBehavior: z.enum(['doNotInstall', 'installAsManaged', 'installAsUnmanaged']).optional().describe('Install behavior'),
+    uninstallOnDeviceRemoval: z.boolean().optional().describe('Uninstall on device removal'),
+    installAsManaged: z.boolean().optional().describe('Install as managed'),
+  }).optional().describe('Deployment settings'),
+});
+
+export const intuneWindowsAppSchema = z.object({
+  action: z.enum(['list', 'get', 'deploy', 'update', 'remove', 'sync_status']).describe('Intune Windows app management action'),
+  appId: z.string().optional().describe('App ID for app-specific operations'),
+  appType: z.enum(['win32LobApp', 'microsoftStoreForBusinessApp', 'webApp', 'officeSuiteApp', 'microsoftEdgeApp']).optional().describe('Windows app type'),
+  name: z.string().optional().describe('Application name'),
+  version: z.string().optional().describe('Application version'),
+  assignmentGroups: z.array(z.string()).optional().describe('Target groups for app deployment'),
+  assignment: z.object({
+    groupIds: z.array(z.string()).describe('Target group IDs'),
+    installIntent: z.enum(['available', 'required', 'uninstall', 'availableWithoutEnrollment']).describe('Installation intent'),
+    deliveryOptimizationPriority: z.enum(['notConfigured', 'foreground']).optional().describe('Delivery optimization priority'),
+  }).optional().describe('App assignment configuration'),
+  appInfo: z.object({
+    displayName: z.string().describe('Application display name'),
+    description: z.string().optional().describe('Application description'),
+    publisher: z.string().describe('Application publisher'),
+    fileName: z.string().optional().describe('Installation file name'),
+    setupFilePath: z.string().optional().describe('Setup file path'),
+    installCommandLine: z.string().optional().describe('Install command line'),
+    uninstallCommandLine: z.string().optional().describe('Uninstall command line'),
+    minimumSupportedOperatingSystem: z.string().optional().describe('Minimum OS version'),
+    packageFilePath: z.string().optional().describe('Package file path'),
+  }).optional().describe('Application information'),
+});
+
+export const intuneWindowsComplianceSchema = z.object({
+  action: z.enum(['get_status', 'get_details', 'update_policy', 'force_evaluation', 'get_bitlocker_keys']).describe('Intune Windows compliance action'),
+  deviceId: z.string().optional().describe('Device ID for compliance assessment'),
+  complianceType: z.enum(['security', 'configuration', 'update', 'bitlocker']).optional().describe('Type of compliance check'),
+  policies: z.array(z.string()).optional().describe('Specific policy IDs to assess'),
+  complianceData: z.object({
+    passwordCompliant: z.boolean().optional().describe('Password compliance status'),
+    encryptionCompliant: z.boolean().optional().describe('Encryption compliance status'),
+    osVersionCompliant: z.boolean().optional().describe('OS version compliance status'),
+    threatProtectionCompliant: z.boolean().optional().describe('Threat protection compliance status'),
+    bitlockerCompliant: z.boolean().optional().describe('BitLocker compliance status'),
+    firewallCompliant: z.boolean().optional().describe('Firewall compliance status'),
+    antivirusCompliant: z.boolean().optional().describe('Antivirus compliance status'),
+  }).optional().describe('Compliance assessment data'),
+});
+
 // Compliance Framework Management
 export const complianceFrameworkSchema = z.object({
   action: z.enum(['list', 'configure', 'status', 'assess', 'activate', 'deactivate']).describe('Compliance framework management action'),
@@ -407,6 +489,10 @@ export const m365CoreTools = {
   intuneMacOSPolicies: intuneMacOSPolicySchema,
   intuneMacOSApps: intuneMacOSAppSchema,
   intuneMacOSCompliance: intuneMacOSComplianceSchema,
+  intuneWindowsDevices: intuneWindowsDeviceSchema,
+  intuneWindowsPolicies: intuneWindowsPolicySchema,
+  intuneWindowsApps: intuneWindowsAppSchema,
+  intuneWindowsCompliance: intuneWindowsComplianceSchema,
   complianceFrameworks: complianceFrameworkSchema,
   complianceAssessments: complianceAssessmentSchema,
   complianceMonitoring: complianceMonitoringSchema,

@@ -37,8 +37,7 @@ import {
   exchangeSettingsSchema,
   userManagementSchema,
   offboardingSchema,
-  azureAdRoleSchema,
-  azureAdAppSchema,
+  azureAdRoleSchema,  azureAdAppSchema,
   azureAdDeviceSchema,
   azureAdSpSchema,
   callMicrosoftApiSchema,
@@ -51,6 +50,10 @@ import {
   intuneMacOSPolicySchema,
   intuneMacOSAppSchema,
   intuneMacOSComplianceSchema,
+  intuneWindowsDeviceSchema,
+  intuneWindowsPolicySchema,
+  intuneWindowsAppSchema,
+  intuneWindowsComplianceSchema,
   complianceFrameworkSchema,
   complianceAssessmentSchema,
   complianceMonitoringSchema,
@@ -104,6 +107,20 @@ import {
   IntuneMacOSPolicyArgs,
   IntuneMacOSAppArgs,
   IntuneMacOSComplianceArgs
+} from './types/intune-types.js';
+
+// Import Intune Windows handlers and types
+import {
+  handleIntuneWindowsDevices,
+  handleIntuneWindowsPolicies,
+  handleIntuneWindowsApps,
+  handleIntuneWindowsCompliance
+} from './handlers/intune-windows-handler.js';
+import {
+  IntuneWindowsDeviceArgs,
+  IntuneWindowsPolicyArgs,
+  IntuneWindowsAppArgs,
+  IntuneWindowsComplianceArgs
 } from './types/intune-types.js';
 
 // Import compliance handlers and types
@@ -698,6 +715,85 @@ export class M365CoreServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Error executing manage_intune_macos_compliance: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })    );
+
+    // Intune Windows Devices - Enhanced with lazy loading and better error handling
+    this.server.tool(
+      "manage_intune_windows_devices",
+      intuneWindowsDeviceSchema.shape,
+      wrapToolHandler(async (args: IntuneWindowsDeviceArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneWindowsDevices(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing manage_intune_windows_devices: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune Windows Policies - Enhanced with lazy loading and better error handling
+    this.server.tool(
+      "manage_intune_windows_policies",
+      intuneWindowsPolicySchema.shape,
+      wrapToolHandler(async (args: IntuneWindowsPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneWindowsPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing manage_intune_windows_policies: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune Windows Apps - Enhanced with lazy loading and better error handling
+    this.server.tool(
+      "manage_intune_windows_apps",
+      intuneWindowsAppSchema.shape,
+      wrapToolHandler(async (args: IntuneWindowsAppArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneWindowsApps(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing manage_intune_windows_apps: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Intune Windows Compliance - Enhanced with lazy loading and better error handling
+    this.server.tool(
+      "manage_intune_windows_compliance",
+      intuneWindowsComplianceSchema.shape,
+      wrapToolHandler(async (args: IntuneWindowsComplianceArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIntuneWindowsCompliance(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing manage_intune_windows_compliance: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
