@@ -128,15 +128,23 @@ export async function handleIntuneWindowsDevices(
       result = await graphClient.api(apiPath).post({
         templateType: 'predefined'
       });
-      break;
-
-    case 'bitlocker_recovery':
+      break;    case 'bitlocker_recovery':
       if (!args.deviceId) {
         throw new McpError(ErrorCode.InvalidParams, 'deviceId is required for bitlocker_recovery action');
       }
       apiPath = `/informationProtection/bitlocker/recoveryKeys`;
       const filter = `$filter=deviceId eq '${args.deviceId}'`;
       result = await graphClient.api(`${apiPath}?${filter}`).get();
+      break;
+
+    case 'autopilot_reset':
+      if (!args.deviceId) {
+        throw new McpError(ErrorCode.InvalidParams, 'deviceId is required for autopilot_reset action');
+      }
+      apiPath = `/deviceManagement/managedDevices/${args.deviceId}/autopilotReset`;
+      result = await graphClient.api(apiPath).post({
+        keepUserData: false
+      });
       break;
 
     default:
@@ -399,7 +407,8 @@ export async function handleIntuneWindowsApps(
       apiPath = '/deviceAppManagement/mobileApps';
       let filter = '';
       
-      if (args.appType) {        const odataType = 
+      if (args.appType) {
+        const odataType = 
           args.appType === 'win32LobApp' ? '#microsoft.graph.win32LobApp' :
           args.appType === 'microsoftStoreForBusinessApp' ? '#microsoft.graph.microsoftStoreForBusinessApp' :
           args.appType === 'officeSuiteApp' ? '#microsoft.graph.officeSuiteApp' :
