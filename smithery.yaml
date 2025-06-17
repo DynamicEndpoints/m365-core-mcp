@@ -31,8 +31,7 @@ startCommand:
       logLevel:
         type: string
         enum: ["debug", "info", "warn", "error"]
-        description: Log level (default info)
-  commandFunction:
+        description: Log level (default info)  commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
     (config) => ({
