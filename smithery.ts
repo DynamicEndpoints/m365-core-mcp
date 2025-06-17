@@ -16,38 +16,102 @@ export const configSchema = z.object({
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).optional().describe('Log level (default info)')
 });
 
-// Tool definitions for Smithery discovery (without schemas to avoid import issues)
+// Tool definitions for Smithery discovery
 export const tools = [
   // Core M365 Management Tools
   {
     name: 'manage_distribution_lists',
     description: 'Manage Microsoft 365 distribution lists - create, update, delete, and manage membership',
     category: 'Microsoft 365',
-    tags: ['email', 'groups', 'distribution-lists', 'm365']
+    tags: ['email', 'groups', 'distribution-lists', 'm365'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'add_members', 'remove_members'] },
+        name: { type: 'string', description: 'Distribution list name' },
+        description: { type: 'string', description: 'Distribution list description' },
+        members: { type: 'array', items: { type: 'string' }, description: 'Member email addresses' }
+      },
+      required: ['action']
+    }
   },
   {
     name: 'manage_security_groups',
     description: 'Manage Azure AD security groups - create, update, delete, and manage membership',
     category: 'Azure AD',
-    tags: ['security', 'groups', 'azure-ad', 'access-control']
+    tags: ['security', 'groups', 'azure-ad', 'access-control'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'add_members', 'remove_members'] },
+        name: { type: 'string', description: 'Security group name' },
+        description: { type: 'string', description: 'Security group description' },
+        members: { type: 'array', items: { type: 'string' }, description: 'Member IDs or email addresses' }
+      },
+      required: ['action']
+    }
   },
   {
     name: 'manage_m365_groups',
     description: 'Manage Microsoft 365 Groups - create, update, delete, and manage membership',
     category: 'Microsoft 365',
-    tags: ['groups', 'collaboration', 'teams', 'm365']
+    tags: ['groups', 'collaboration', 'teams', 'm365'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'add_members', 'remove_members'] },
+        name: { type: 'string', description: 'M365 group name' },
+        description: { type: 'string', description: 'M365 group description' },
+        members: { type: 'array', items: { type: 'string' }, description: 'Member email addresses' }
+      },
+      required: ['action']    }
   },
   {
     name: 'manage_exchange_settings',
     description: 'Manage Exchange Online settings - mailbox configuration, transport rules, and policies',
     category: 'Exchange Online',
-    tags: ['exchange', 'email', 'mailbox', 'transport-rules']
+    tags: ['exchange', 'email', 'mailbox', 'transport-rules'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create_mailbox', 'update_mailbox', 'delete_mailbox', 'list_mailboxes', 'create_transport_rule', 'list_transport_rules'] },
+        userPrincipalName: { type: 'string', description: 'User principal name for mailbox operations' },
+        displayName: { type: 'string', description: 'Display name' },
+        ruleName: { type: 'string', description: 'Transport rule name' }
+      },
+      required: ['action']
+    }
   },
   {
     name: 'manage_user_settings',
     description: 'Manage user settings and configurations across Microsoft 365 services',
     category: 'User Management',
-    tags: ['users', 'settings', 'configuration', 'm365']
+    tags: ['users', 'settings', 'configuration', 'm365'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'update', 'delete', 'list', 'get'] },
+        userPrincipalName: { type: 'string', description: 'User principal name' },
+        displayName: { type: 'string', description: 'User display name' },
+        department: { type: 'string', description: 'User department' }
+      },
+      required: ['action']
+    }
+  },
+  {
+    name: 'call_microsoft_api',
+    description: 'Make direct calls to Microsoft Graph API or Azure Management API with authentication',
+    category: 'API Access',
+    tags: ['api', 'graph', 'azure', 'direct-access'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        endpoint: { type: 'string', description: 'API endpoint URL' },
+        method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], description: 'HTTP method' },
+        body: { type: 'object', description: 'Request body for POST/PUT/PATCH requests' },
+        apiType: { type: 'string', enum: ['graph', 'azure'], description: 'API type (graph or azure)' }
+      },      required: ['endpoint', 'method', 'apiType']
+    }
   },
   {
     name: 'manage_offboarding',
