@@ -3,6 +3,9 @@ import { Client } from '@microsoft/microsoft-graph-client';
 import {
   UserManagementArgs,
   OffboardingArgs,
+  DistributionListArgs,
+  SecurityGroupArgs,
+  M365GroupArgs,
   SharePointSiteArgs,
   SharePointListArgs,
   AzureAdRoleArgs,
@@ -912,64 +915,294 @@ export async function handleManageAlerts(
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
-// Placeholder implementations for missing handlers
+// Distribution Lists Handler
 export async function handleDistributionLists(
   graphClient: Client,
-  args: any
-): Promise<any> {
-  // TODO: Implement distribution list management
-  return {
-    content: [
-      {
-        type: 'text',
-        text: 'Distribution list management not yet implemented'
+  args: DistributionListArgs
+): Promise<{ content: { type: string; text: string }[] }> {
+  let apiPath = '';
+  let result: any;
+
+  switch (args.action) {
+    case 'get':
+      if (!args.listId) {
+        throw new McpError(ErrorCode.InvalidParams, 'listId is required for get action');
       }
-    ]
-  };
+      apiPath = `/groups/${args.listId}`;
+      result = await graphClient.api(apiPath).get();
+      break;
+
+    case 'create':
+      if (!args.displayName || !args.emailAddress) {
+        throw new McpError(ErrorCode.InvalidParams, 'displayName and emailAddress are required for create action');
+      }
+      apiPath = '/groups';
+      const createPayload = {
+        displayName: args.displayName,
+        mailNickname: args.emailAddress.split('@')[0],
+        mailEnabled: true,
+        securityEnabled: false,
+        groupTypes: [], // Empty for distribution lists
+        mail: args.emailAddress
+      };
+      result = await graphClient.api(apiPath).post(createPayload);
+      break;
+
+    case 'update':
+      if (!args.listId) {
+        throw new McpError(ErrorCode.InvalidParams, 'listId is required for update action');
+      }
+      apiPath = `/groups/${args.listId}`;
+      const updatePayload: any = {};
+      if (args.displayName) updatePayload.displayName = args.displayName;
+      result = await graphClient.api(apiPath).patch(updatePayload);
+      break;
+
+    case 'delete':
+      if (!args.listId) {
+        throw new McpError(ErrorCode.InvalidParams, 'listId is required for delete action');
+      }
+      apiPath = `/groups/${args.listId}`;
+      await graphClient.api(apiPath).delete();
+      result = { message: 'Distribution list deleted successfully' };
+      break;
+
+    case 'add_members':
+      if (!args.listId || !args.members?.length) {
+        throw new McpError(ErrorCode.InvalidParams, 'listId and members are required for add_members action');
+      }
+      
+      for (const member of args.members) {
+        await graphClient
+          .api(`/groups/${args.listId}/members/$ref`)
+          .post({
+            '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`
+          });
+      }
+      result = { message: `Added ${args.members.length} members to distribution list` };
+      break;
+
+    case 'remove_members':
+      if (!args.listId || !args.members?.length) {
+        throw new McpError(ErrorCode.InvalidParams, 'listId and members are required for remove_members action');
+      }
+      
+      for (const member of args.members) {
+        await graphClient
+          .api(`/groups/${args.listId}/members/${member}/$ref`)
+          .delete();
+      }
+      result = { message: `Removed ${args.members.length} members from distribution list` };
+      break;
+
+    default:
+      throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+  }
+
+  return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
+// Security Groups Handler
 export async function handleSecurityGroups(
   graphClient: Client,
-  args: any
-): Promise<any> {
-  // TODO: Implement security group management
-  return {
-    content: [
-      {
-        type: 'text',
-        text: 'Security group management not yet implemented'
+  args: SecurityGroupArgs
+): Promise<{ content: { type: string; text: string }[] }> {
+  let apiPath = '';
+  let result: any;
+
+  switch (args.action) {
+    case 'get':
+      if (!args.groupId) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId is required for get action');
       }
-    ]
-  };
+      apiPath = `/groups/${args.groupId}`;
+      result = await graphClient.api(apiPath).get();
+      break;
+
+    case 'create':
+      if (!args.displayName) {
+        throw new McpError(ErrorCode.InvalidParams, 'displayName is required for create action');
+      }
+      apiPath = '/groups';
+      const createPayload = {
+        displayName: args.displayName,
+        description: args.description || '',
+        mailNickname: args.displayName.replace(/\s+/g, '').toLowerCase(),
+        mailEnabled: args.settings?.mailEnabled || false,
+        securityEnabled: args.settings?.securityEnabled !== false, // Default to true
+        groupTypes: []
+      };
+      result = await graphClient.api(apiPath).post(createPayload);
+      break;
+
+    case 'update':
+      if (!args.groupId) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId is required for update action');
+      }
+      apiPath = `/groups/${args.groupId}`;
+      const updatePayload: any = {};
+      if (args.displayName) updatePayload.displayName = args.displayName;
+      if (args.description) updatePayload.description = args.description;
+      result = await graphClient.api(apiPath).patch(updatePayload);
+      break;
+
+    case 'delete':
+      if (!args.groupId) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId is required for delete action');
+      }
+      apiPath = `/groups/${args.groupId}`;
+      await graphClient.api(apiPath).delete();
+      result = { message: 'Security group deleted successfully' };
+      break;
+
+    case 'add_members':
+      if (!args.groupId || !args.members?.length) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId and members are required for add_members action');
+      }
+      
+      for (const member of args.members) {
+        await graphClient
+          .api(`/groups/${args.groupId}/members/$ref`)
+          .post({
+            '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`
+          });
+      }
+      result = { message: `Added ${args.members.length} members to security group` };
+      break;
+
+    case 'remove_members':
+      if (!args.groupId || !args.members?.length) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId and members are required for remove_members action');
+      }
+      
+      for (const member of args.members) {
+        await graphClient
+          .api(`/groups/${args.groupId}/members/${member}/$ref`)
+          .delete();
+      }
+      result = { message: `Removed ${args.members.length} members from security group` };
+      break;
+
+    default:
+      throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+  }
+
+  return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
+// M365 Groups Handler
 export async function handleM365Groups(
   graphClient: Client,
-  args: any
-): Promise<any> {
-  // TODO: Implement M365 group management
-  return {
-    content: [
-      {
-        type: 'text',
-        text: 'M365 group management not yet implemented'
+  args: M365GroupArgs
+): Promise<{ content: { type: string; text: string }[] }> {
+  let apiPath = '';
+  let result: any;
+
+  switch (args.action) {
+    case 'get':
+      if (!args.groupId) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId is required for get action');
       }
-    ]
-  };
+      apiPath = `/groups/${args.groupId}`;
+      result = await graphClient.api(apiPath).get();
+      break;
+
+    case 'create':
+      if (!args.displayName) {
+        throw new McpError(ErrorCode.InvalidParams, 'displayName is required for create action');
+      }
+      apiPath = '/groups';
+      const createPayload = {
+        displayName: args.displayName,
+        description: args.description || '',
+        mailNickname: args.displayName.replace(/\s+/g, '').toLowerCase(),
+        mailEnabled: true,
+        securityEnabled: false,
+        groupTypes: ['Unified'], // M365 groups are unified groups
+        visibility: args.settings?.visibility || 'Private'
+      };
+      result = await graphClient.api(apiPath).post(createPayload);
+      
+      // Add owners if provided
+      if (args.owners?.length && result.id) {
+        for (const owner of args.owners) {
+          await graphClient
+            .api(`/groups/${result.id}/owners/$ref`)
+            .post({
+              '@odata.id': `https://graph.microsoft.com/v1.0/users/${owner}`
+            });
+        }
+      }
+      break;
+
+    case 'update':
+      if (!args.groupId) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId is required for update action');
+      }
+      apiPath = `/groups/${args.groupId}`;
+      const updatePayload: any = {};
+      if (args.displayName) updatePayload.displayName = args.displayName;
+      if (args.description) updatePayload.description = args.description;
+      if (args.settings?.visibility) updatePayload.visibility = args.settings.visibility;
+      result = await graphClient.api(apiPath).patch(updatePayload);
+      break;
+
+    case 'delete':
+      if (!args.groupId) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId is required for delete action');
+      }
+      apiPath = `/groups/${args.groupId}`;
+      await graphClient.api(apiPath).delete();
+      result = { message: 'M365 group deleted successfully' };
+      break;
+
+    case 'add_members':
+      if (!args.groupId || !args.members?.length) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId and members are required for add_members action');
+      }
+      
+      for (const member of args.members) {
+        await graphClient
+          .api(`/groups/${args.groupId}/members/$ref`)
+          .post({
+            '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`
+          });
+      }
+      result = { message: `Added ${args.members.length} members to M365 group` };
+      break;
+
+    case 'remove_members':
+      if (!args.groupId || !args.members?.length) {
+        throw new McpError(ErrorCode.InvalidParams, 'groupId and members are required for remove_members action');
+      }
+      
+      for (const member of args.members) {
+        await graphClient
+          .api(`/groups/${args.groupId}/members/${member}/$ref`)
+          .delete();
+      }
+      result = { message: `Removed ${args.members.length} members from M365 group` };
+      break;
+
+    default:
+      throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+  }
+
+  return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
 export async function handleSharePointSites(
   graphClient: Client,
-  args: any
-): Promise<any> {
-  // TODO: Implement SharePoint site management - delegate to handleSharePointSite
+  args: SharePointSiteArgs
+): Promise<{ content: { type: string; text: string }[] }> {
+  // Delegate to the main SharePoint site handler
   return await handleSharePointSite(graphClient, args);
 }
 
 export async function handleSharePointLists(
   graphClient: Client,
-  args: any
-): Promise<any> {
-  // TODO: Implement SharePoint list management - delegate to handleSharePointList
+  args: SharePointListArgs
+): Promise<{ content: { type: string; text: string }[] }> {
+  // Delegate to the main SharePoint list handler
   return await handleSharePointList(graphClient, args);
 }

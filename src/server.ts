@@ -502,11 +502,9 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Microsoft API Call - Enhanced with lazy loading and better error handling
+    );    // Microsoft API Call - Enhanced with lazy loading and better error handling
     this.server.tool(
-      "call_microsoft_api",
+      "dynamicendpoints m365 assistant",
       callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
         this.validateCredentials();
@@ -518,7 +516,7 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing call_microsoft_api: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing dynamicendpoints m365 assistant: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })

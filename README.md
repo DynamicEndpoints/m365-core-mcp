@@ -47,7 +47,7 @@ Added several new tools to expand Microsoft Entra ID management and Security & C
 - `manage_service_principals`: Manage Entra ID Service Principals (list, view, owners).
 
 **Generic API Access:**
-- `call_microsoft_api`: Call arbitrary Microsoft Graph (including Entra APIs) or Azure Resource Management API endpoints.
+- `dynamicendpoints m365 assistant`: Call arbitrary Microsoft Graph (including Entra APIs) or Azure Resource Management API endpoints.
 
 **Security & Compliance:**
 - `search_audit_log`: Search the Entra ID Unified Audit Log.

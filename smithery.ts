@@ -99,7 +99,7 @@ export const tools = [
     }
   },
   {
-    name: 'call_microsoft_api',
+    name: 'dynamicendpoints m365 assistant',
     description: 'Make direct calls to Microsoft Graph API or Azure Management API with authentication',
     category: 'API Access',
     tags: ['api', 'graph', 'azure', 'direct-access'],

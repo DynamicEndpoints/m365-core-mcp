@@ -111,7 +111,7 @@ tools:
     category: Azure AD
     tags: [service-principals, applications, azure-ad, automation]
 
-  - name: call_microsoft_api
+  - name: dynamicendpoints m365 assistant
     description: Dynamic API endpoint for calling any Microsoft Graph or Azure Resource Management API
     category: API Access
     tags: [graph-api, azure-api, dynamic, automation]
