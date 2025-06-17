@@ -354,10 +354,10 @@ export class M365CoreServer {
         `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }  private setupTools(): void {
-    // Distribution Lists - Enhanced with lazy loading and better error handling
+  }  private setupTools(): void {    // Distribution Lists - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_distribution_lists",
+      "Create, update, delete, and manage Exchange distribution lists with members and properties",
       distributionListSchema.shape,
       wrapToolHandler(async (args: DistributionListArgs) => {
         // Lazy loading: Validate credentials only when tool is executed
@@ -374,11 +374,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Security Groups - Enhanced with lazy loading and better error handling
+    );    // Security Groups - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_security_groups",
+      "Create, update, delete, and manage Azure AD security groups with members and properties",
       securityGroupSchema.shape,
       wrapToolHandler(async (args: SecurityGroupArgs) => {
         this.validateCredentials();
@@ -394,11 +393,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // M365 Groups - Enhanced with lazy loading and better error handling
+    );    // M365 Groups - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_m365_groups",
+      "Create, update, delete, and manage Microsoft 365 groups with Teams integration and member management",
       m365GroupSchema.shape,
       wrapToolHandler(async (args: M365GroupArgs) => {
         this.validateCredentials();
@@ -414,11 +412,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Exchange Settings - Enhanced with lazy loading and better error handling
+    );    // Exchange Settings - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_exchange_settings",
+      "Configure and manage Exchange Online settings including mailbox configurations, transport rules, and mail flow",
       exchangeSettingsSchema.shape,
       wrapToolHandler(async (args: ExchangeSettingsArgs) => {
         this.validateCredentials();
@@ -434,11 +431,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // User Management - Enhanced with lazy loading and better error handling
+    );    // User Management - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_user_settings",
+      "Get, update, and manage Azure AD user settings including profiles, licenses, and account properties",
       userManagementSchema.shape,
       wrapToolHandler(async (args: UserManagementArgs) => {
         this.validateCredentials();
@@ -454,11 +450,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Offboarding - Enhanced with lazy loading and better error handling
+    );    // Offboarding - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_offboarding",
+      "Securely offboard users by disabling accounts, revoking access, transferring data, and managing group memberships",
       offboardingSchema.shape,
       wrapToolHandler(async (args: OffboardingArgs) => {
         this.validateCredentials();
@@ -474,11 +469,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // SharePoint Sites - Enhanced with lazy loading and better error handling
+    );    // SharePoint Sites - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_sharepoint_sites",
+      "Create, update, delete, and manage SharePoint sites including permissions, properties, and site collections",
       sharePointSiteSchema.shape,
       wrapToolHandler(async (args: SharePointSiteArgs) => {
         this.validateCredentials();
@@ -494,11 +488,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // SharePoint Lists - Enhanced with lazy loading and better error handling
+    );    // SharePoint Lists - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_sharepoint_lists",
+      "Create, update, delete, and manage SharePoint lists including columns, items, views, and permissions",
       sharePointListSchema.shape,
       wrapToolHandler(async (args: SharePointListArgs) => {
         this.validateCredentials();
@@ -514,11 +507,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Azure AD Roles - Enhanced with lazy loading and better error handling
+    );    // Azure AD Roles - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_roles",
+      "Assign, remove, and manage Azure AD directory roles and role memberships for users and groups",
       azureAdRoleSchema.shape,
       wrapToolHandler(async (args: AzureAdRoleArgs) => {
         this.validateCredentials();
@@ -534,11 +526,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Azure AD Apps - Enhanced with lazy loading and better error handling
+    );    // Azure AD Apps - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_apps",
+      "Create, update, delete, and manage Azure AD application registrations including permissions and certificates",
       azureAdAppSchema.shape,
       wrapToolHandler(async (args: AzureAdAppArgs) => {
         this.validateCredentials();
@@ -554,11 +545,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Azure AD Devices - Enhanced with lazy loading and better error handling
+    );    // Azure AD Devices - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_devices",
+      "Register, update, delete, and manage Azure AD joined devices including compliance and configuration",
       azureAdDeviceSchema.shape,
       wrapToolHandler(async (args: AzureAdDeviceArgs) => {
         this.validateCredentials();
@@ -574,11 +564,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Service Principals - Enhanced with lazy loading and better error handling
+    );    // Service Principals - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_service_principals",
+      "Create, update, delete, and manage Azure AD service principals including credentials and permissions",
       azureAdSpSchema.shape,
       wrapToolHandler(async (args: AzureAdSpArgs) => {
         this.validateCredentials();
@@ -596,6 +585,7 @@ export class M365CoreServer {
       })    );    // Microsoft API Call - Enhanced with performance and reliability features
     this.server.tool(
       "dynamicendpoints m365 assistant",
+      "Enhanced Microsoft Graph and Azure Resource Management API client with retry logic, rate limiting, field selection, and multiple response formats",
       callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
         this.validateCredentials();
@@ -618,11 +608,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Audit Log Search - Enhanced with lazy loading and better error handling
+    );    // Audit Log Search - Enhanced with lazy loading and better error handling
     this.server.tool(
       "search_audit_log",
+      "Search and retrieve Microsoft 365 audit logs with filtering by date, user, activity, and workload",
       auditLogSchema.shape,
       wrapToolHandler(async (args: AuditLogArgs) => {
         this.validateCredentials();
@@ -638,11 +627,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Alert Management - Enhanced with lazy loading and better error handling
+    );    // Alert Management - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_alerts",
+      "List, get, and manage Microsoft 365 security alerts with filtering and status updates",
       alertSchema.shape,
       wrapToolHandler(async (args: AlertArgs) => {
         this.validateCredentials();
@@ -658,11 +646,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // DLP Policies - Enhanced with lazy loading and better error handling
+    );    // DLP Policies - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_dlp_policies",
+      "Create, update, delete, and manage Data Loss Prevention (DLP) policies including rules, conditions, and actions",
       dlpPolicySchema.shape,
       wrapToolHandler(async (args: DLPPolicyArgs) => {
         this.validateCredentials();
@@ -678,11 +665,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // DLP Incidents - Enhanced with lazy loading and better error handling
+    );    // DLP Incidents - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_dlp_incidents",
+      "Investigate, review, and manage Data Loss Prevention (DLP) incidents including status updates and remediation",
       dlpIncidentSchema.shape,
       wrapToolHandler(async (args: DLPIncidentArgs) => {
         this.validateCredentials();
@@ -698,11 +684,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Sensitivity Labels - Enhanced with lazy loading and better error handling
+    );    // Sensitivity Labels - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_sensitivity_labels",
+      "Create, update, delete, and manage Microsoft Purview sensitivity labels including policies and auto-labeling",
       sensitivityLabelSchema.shape,
       wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
         this.validateCredentials();
@@ -718,11 +703,10 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Intune macOS Devices - Enhanced with lazy loading and better error handling
+    );    // Intune macOS Devices - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_devices",
+      "Manage Intune macOS devices including enrollment, compliance, configuration, and remote actions",
       intuneMacOSDeviceSchema.shape,
       wrapToolHandler(async (args: IntuneMacOSDeviceArgs) => {
         this.validateCredentials();
@@ -743,6 +727,7 @@ export class M365CoreServer {
     // Intune macOS Policies - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_policies",
+      "Create, update, delete, and manage Intune macOS configuration policies including device restrictions and compliance",
       intuneMacOSPolicySchema.shape,
       wrapToolHandler(async (args: IntuneMacOSPolicyArgs) => {
         this.validateCredentials();
@@ -763,6 +748,7 @@ export class M365CoreServer {
     // Intune macOS Apps - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_apps",
+      "Deploy, update, remove, and manage macOS applications through Microsoft Intune including assignment and monitoring",
       intuneMacOSAppSchema.shape,
       wrapToolHandler(async (args: IntuneMacOSAppArgs) => {
         this.validateCredentials();
@@ -783,6 +769,7 @@ export class M365CoreServer {
     // Intune macOS Compliance - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_macos_compliance",
+      "Configure and manage macOS device compliance policies in Intune including requirements and actions",
       intuneMacOSComplianceSchema.shape,
       wrapToolHandler(async (args: IntuneMacOSComplianceArgs) => {
         this.validateCredentials();
@@ -802,6 +789,7 @@ export class M365CoreServer {
     // Intune Windows Devices - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_windows_devices",
+      "Manage Intune Windows devices including enrollment, compliance, configuration, and remote actions",
       intuneWindowsDeviceSchema.shape,
       wrapToolHandler(async (args: IntuneWindowsDeviceArgs) => {
         this.validateCredentials();
@@ -822,6 +810,7 @@ export class M365CoreServer {
     // Intune Windows Policies - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_windows_policies",
+      "Create, update, delete, and manage Intune Windows configuration policies including device restrictions and security",
       intuneWindowsPolicySchema.shape,
       wrapToolHandler(async (args: IntuneWindowsPolicyArgs) => {
         this.validateCredentials();
@@ -842,6 +831,7 @@ export class M365CoreServer {
     // Intune Windows Apps - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_windows_apps",
+      "Deploy, update, remove, and manage Windows applications through Microsoft Intune including assignment and monitoring",
       intuneWindowsAppSchema.shape,
       wrapToolHandler(async (args: IntuneWindowsAppArgs) => {
         this.validateCredentials();
@@ -862,6 +852,7 @@ export class M365CoreServer {
     // Intune Windows Compliance - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_intune_windows_compliance",
+      "Configure and manage Windows device compliance policies in Intune including requirements and actions",
       intuneWindowsComplianceSchema.shape,
       wrapToolHandler(async (args: IntuneWindowsComplianceArgs) => {
         this.validateCredentials();
@@ -882,6 +873,7 @@ export class M365CoreServer {
     // Compliance Frameworks - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_compliance_frameworks",
+      "Assess and manage compliance against various frameworks (SOC2, ISO27001, NIST, GDPR, HIPAA)",
       complianceFrameworkSchema.shape,
       wrapToolHandler(async (args: ComplianceFrameworkArgs) => {
         this.validateCredentials();
@@ -902,6 +894,7 @@ export class M365CoreServer {
     // Compliance Assessments - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_compliance_assessments",
+      "Create, run, and manage compliance assessments with automated scoring and gap analysis",
       complianceAssessmentSchema.shape,
       wrapToolHandler(async (args: ComplianceAssessmentArgs) => {
         this.validateCredentials();
@@ -922,6 +915,7 @@ export class M365CoreServer {
     // Compliance Monitoring - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_compliance_monitoring",
+      "Monitor compliance status in real-time with alerts, reporting, and automated remediation workflows",
       complianceMonitoringSchema.shape,
       wrapToolHandler(async (args: ComplianceMonitoringArgs) => {
         this.validateCredentials();
@@ -942,6 +936,7 @@ export class M365CoreServer {
     // Evidence Collection - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_evidence_collection",
+      "Collect, organize, and manage compliance evidence including automated evidence gathering and validation",
       evidenceCollectionSchema.shape,
       wrapToolHandler(async (args: EvidenceCollectionArgs) => {
         this.validateCredentials();
@@ -962,6 +957,7 @@ export class M365CoreServer {
     // Gap Analysis - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_gap_analysis",
+      "Perform gap analysis against compliance frameworks with prioritized remediation recommendations",
       gapAnalysisSchema.shape,
       wrapToolHandler(async (args: GapAnalysisArgs) => {
         this.validateCredentials();
@@ -1002,6 +998,7 @@ export class M365CoreServer {
     // CIS Compliance - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_cis_compliance",
+      "Assess and manage CIS (Center for Internet Security) compliance benchmarks and controls",
       cisComplianceSchema.shape,
       wrapToolHandler(async (args: CISComplianceArgs) => {
         this.validateCredentials();
