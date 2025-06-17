@@ -203,3 +203,13 @@ export interface AlertArgs {
   filter?: string;
   top?: number;
 }
+
+// Intune Policy Creation Types
+export interface CreateIntunePolicyArgs {
+  platform: 'windows' | 'macos';
+  policyType: 'Configuration' | 'Compliance' | 'Security' | 'Update' | 'AppProtection' | 'EndpointSecurity';
+  displayName: string;
+  description?: string;
+  settings?: any;
+  assignments?: any[];
+}

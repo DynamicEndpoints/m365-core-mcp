@@ -522,3 +522,5 @@ export const m365CoreTools = {
 } as const;
 
 export { z };
+
+export * from './tool-definitions-intune.js';

@@ -93,6 +93,7 @@ import {
   CallMicrosoftApiArgs,
   AuditLogArgs,
   AlertArgs,
+  CreateIntunePolicyArgs,
 } from './types.js';
 
 import {
@@ -131,6 +132,9 @@ import {
   m365CoreTools,
 } from './tool-definitions.js';
 
+import { intuneTools, createIntunePolicySchema } from './tool-definitions-intune.js';
+
+import { handleCreateIntunePolicy } from './handlers/intune-handler.js';
 import {
   handleDistributionLists,
   handleSecurityGroups,
@@ -1013,7 +1017,48 @@ export class M365CoreServer {
           );
         }
       })
+    );    // Intune Policy Creation Tool - Enhanced for accurate policy creation
+    this.server.tool(
+      "create_intune_policy",
+      "Create accurate and complete Intune policies for Windows or macOS with validated settings and proper structure",
+      createIntunePolicySchema.shape,
+      wrapToolHandler(async (args: CreateIntunePolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleCreateIntunePolicy(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing create_intune_policy: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
     );
+
+    // Intune Policy Creation Tool - Unified and schema-driven
+    intuneTools.forEach(tool => {
+      this.server.tool(
+        tool.name,
+        (tool.inputSchema as any).shape,
+        wrapToolHandler(async (args: any) => {
+          this.validateCredentials();
+          try {
+            return await handleCreateIntunePolicy(this.getGraphClient(), args);
+          } catch (error) {
+            if (error instanceof McpError) {
+              throw error;
+            }
+            throw new McpError(
+              ErrorCode.InternalError,
+              `Error executing ${tool.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        })
+      );
+    });
   }
   private setupResources(): void {
     // SharePoint Sites resource
