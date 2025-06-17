@@ -280,13 +280,14 @@ export class M365CoreServer {
       process.exit(0);
     });
   }
-
   private getGraphClient(): Client {
     if (!this.graphClient) {
-      this.validateCredentials();
+      // Note: Credentials will be validated when first API call is made
       this.graphClient = Client.init({
         authProvider: async (callback: (error: Error | null, token: string | null) => void) => {
           try {
+            // Validate credentials here when token is actually needed
+            this.validateCredentials();
             const token = await this.getAccessToken(apiConfigs.graph.scope);
             callback(null, token);
           } catch (error) {
@@ -338,7 +339,6 @@ export class M365CoreServer {
 
     return data.access_token;
   }
-
   private validateCredentials(): void {
     const requiredEnvVars = ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -354,7 +354,53 @@ export class M365CoreServer {
         `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }  private setupTools(): void {    // Distribution Lists - Enhanced with lazy loading and better error handling
+  }
+
+  // Check if credentials are available without throwing errors
+  private hasValidCredentials(): boolean {
+    const requiredEnvVars = ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET'];
+    return requiredEnvVars.every(varName => !!process.env[varName]);
+  }  private setupTools(): void {
+    // Health Check Tool - No authentication required
+    this.server.tool(
+      "health_check",
+      "Check server status and authentication configuration without requiring credentials",
+      z.object({}).shape,
+      wrapToolHandler(async () => {
+        const hasCredentials = this.hasValidCredentials();
+        const status = {
+          serverStatus: "running",
+          version: "1.1.0",
+          timestamp: new Date().toISOString(),
+          authentication: {
+            configured: hasCredentials,
+            requiredVariables: ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET"],
+            status: hasCredentials ? "ready" : "requires_configuration"
+          },
+          capabilities: {
+            tools: true,
+            resources: true,
+            prompts: true,
+            progressReporting: true,
+            streamingResponses: true
+          }
+        };
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `M365 Core MCP Server Health Check\n\n${JSON.stringify(status, null, 2)}\n\n` +
+                   `${hasCredentials ? 
+                     '✅ Server is ready for Microsoft 365 operations' : 
+                     '⚠️  Server is running but requires environment variable configuration for Microsoft 365 operations'}`
+            }
+          ]
+        };
+      })
+    );
+
+    // Distribution Lists - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_distribution_lists",
       "Create, update, delete, and manage Exchange distribution lists with members and properties",
