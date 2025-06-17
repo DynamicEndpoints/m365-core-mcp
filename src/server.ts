@@ -10,10 +10,6 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
-// Import Azure Identity library (commented out due to package installation issues)
-// import { ClientSecretCredential } from '@azure/identity';
-// import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
-
 import {
   UserManagementArgs,
   OffboardingArgs,
@@ -141,8 +137,6 @@ const MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET ?? '';
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 
-// Note: Don't validate credentials here - do it lazily when tools are executed
-
 // Define API configurations
 const apiConfigs = {
   graph: {
@@ -157,12 +151,12 @@ const apiConfigs = {
 
 export class M365CoreServer {
   public server: McpServer;
-  private graphClient: Client | null = null; // Make this nullable and initialize lazily
-  // Cache for tokens based on scope
+  private graphClient: Client | null = null;
   private tokenCache: Map<string, { token: string; expiresOn: number }> = new Map();
-    // SSE and real-time capabilities
   public sseClients: Set<any> = new Set();
-  public progressTrackers: Map<string, any> = new Map();  constructor() {
+  public progressTrackers: Map<string, any> = new Map();
+  
+  constructor() {
     this.server = new McpServer({
       name: 'm365-core-server',
       version: '1.0.0',
@@ -177,20 +171,18 @@ export class M365CoreServer {
       }
     });
 
-    // Register tools and resources immediately (no network calls)
     this.setupTools();
     this.setupResources();
     
-    // Error handling
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
     });
   }
-  // Lazy initialization of Graph client
+
   private getGraphClient(): Client {
     if (!this.graphClient) {
-      this.validateCredentials(); // This only checks env vars, no network calls
+      this.validateCredentials();
       this.graphClient = Client.init({
         authProvider: async (callback: (error: Error | null, token: string | null) => void) => {
           try {
@@ -205,17 +197,14 @@ export class M365CoreServer {
     return this.graphClient;
   }
 
-  // Modified to accept scope and use cache
   private async getAccessToken(scope: string = apiConfigs.graph.scope): Promise<string> {
     const cached = this.tokenCache.get(scope);
     const now = Date.now();
 
-    // Return cached token if valid (expires in > 60 seconds)
     if (cached && cached.expiresOn > now + 60 * 1000) {
       return cached.token;
     }
 
-    // Fetch new token
     const tokenEndpoint = `https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/token`;
     const params = new URLSearchParams();
     params.append('client_id', MS_CLIENT_ID);
@@ -243,8 +232,8 @@ export class M365CoreServer {
       throw new Error(`Invalid token response received for scope ${scope}`);
     }
 
-    // Cache the new token with expiration time (expires_in is in seconds)
-    const expiresOn = now + data.expires_in * 1000;    this.tokenCache.set(scope, { token: data.access_token, expiresOn });
+    const expiresOn = now + data.expires_in * 1000;
+    this.tokenCache.set(scope, { token: data.access_token, expiresOn });
 
     return data.access_token;
   }
@@ -264,13 +253,16 @@ export class M365CoreServer {
         `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }  private setupTools(): void {    // Distribution Lists - Lazy loading enabled for tool discovery
+  }
+
+  private setupTools(): void {
+    // Distribution Lists
     this.server.tool(
       "manage_distribution_lists",
       distributionListSchema.shape,
       wrapToolHandler(async (args: DistributionListArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
-        this.validateCredentials();        try {
+        this.validateCredentials();
+        try {
           return await handleDistributionLists(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
@@ -282,13 +274,15 @@ export class M365CoreServer {
           );
         }
       })
-    );// Security Groups - Lazy loading enabled for tool discovery
+    );
+
+    // Security Groups
     this.server.tool(
       "manage_security_groups",
       securityGroupSchema.shape,
       wrapToolHandler(async (args: SecurityGroupArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
-        this.validateCredentials();        try {
+        this.validateCredentials();
+        try {
           return await handleSecurityGroups(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
@@ -300,13 +294,15 @@ export class M365CoreServer {
           );
         }
       })
-    );    // M365 Groups - Lazy loading enabled for tool discovery
+    );
+
+    // M365 Groups
     this.server.tool(
       "manage_m365_groups",
       m365GroupSchema.shape,
       wrapToolHandler(async (args: M365GroupArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
-        this.validateCredentials();        try {
+        this.validateCredentials();
+        try {
           return await handleM365Groups(this.getGraphClient(), args);
         } catch (error) {
           if (error instanceof McpError) {
@@ -318,12 +314,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Exchange Settings - Lazy loading enabled for tool discovery
+    );
+
+    // Exchange Settings
     this.server.tool(
       "manage_exchange_settings",
       exchangeSettingsSchema.shape,
       wrapToolHandler(async (args: ExchangeSettingsArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleExchangeSettings(this.getGraphClient(), args);
@@ -337,12 +334,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // User Management - Lazy loading enabled for tool discovery
+    );
+
+    // User Management
     this.server.tool(
       "manage_user_settings",
       userManagementSchema.shape,
       wrapToolHandler(async (args: UserManagementArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleUserSettings(this.getGraphClient(), args);
@@ -356,12 +354,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Offboarding - Lazy loading enabled for tool discovery
+    );
+
+    // Offboarding
     this.server.tool(
       "manage_offboarding",
       offboardingSchema.shape,
       wrapToolHandler(async (args: OffboardingArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleOffboarding(this.getGraphClient(), args);
@@ -375,12 +374,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // SharePoint Sites - Lazy loading enabled for tool discovery
+    );
+
+    // SharePoint Sites
     this.server.tool(
       "manage_sharepoint_sites",
       sharePointSiteSchema.shape,
       wrapToolHandler(async (args: SharePointSiteArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleSharePointSite(this.getGraphClient(), args);
@@ -394,12 +394,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // SharePoint Lists - Lazy loading enabled for tool discovery
+    );
+
+    // SharePoint Lists
     this.server.tool(
       "manage_sharepoint_lists",
       sharePointListSchema.shape,
       wrapToolHandler(async (args: SharePointListArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleSharePointList(this.getGraphClient(), args);
@@ -413,12 +414,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Azure AD Roles - Lazy loading enabled for tool discovery
+    );
+
+    // Azure AD Roles
     this.server.tool(
-      "manage_azure_ad_roles",
+      "manage_azuread_roles",
       azureAdRoleSchema.shape,
       wrapToolHandler(async (args: AzureAdRoleArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleAzureAdRoles(this.getGraphClient(), args);
@@ -432,12 +434,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Azure AD Apps - Lazy loading enabled for tool discovery
+    );
+
+    // Azure AD Apps
     this.server.tool(
-      "manage_azure_ad_apps",
+      "manage_azuread_apps",
       azureAdAppSchema.shape,
       wrapToolHandler(async (args: AzureAdAppArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleAzureAdApps(this.getGraphClient(), args);
@@ -453,12 +456,11 @@ export class M365CoreServer {
       })
     );
 
-    // Azure AD Devices - Lazy loading enabled for tool discovery
+    // Azure AD Devices
     this.server.tool(
-      "manage_azure_ad_devices",
+      "manage_azuread_devices",
       azureAdDeviceSchema.shape,
       wrapToolHandler(async (args: AzureAdDeviceArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleAzureAdDevices(this.getGraphClient(), args);
@@ -474,12 +476,11 @@ export class M365CoreServer {
       })
     );
 
-    // Service Principals - Lazy loading enabled for tool discovery
+    // Service Principals
     this.server.tool(
       "manage_service_principals",
       azureAdSpSchema.shape,
       wrapToolHandler(async (args: AzureAdSpArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleServicePrincipals(this.getGraphClient(), args);
@@ -495,12 +496,11 @@ export class M365CoreServer {
       })
     );
 
-    // Dynamic API Endpoint - Lazy loading enabled for tool discovery
+    // Microsoft API Call
     this.server.tool(
       "call_microsoft_api",
       callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleCallMicrosoftApi(this.getGraphClient(), args, this.getAccessToken.bind(this), apiConfigs);
@@ -516,12 +516,11 @@ export class M365CoreServer {
       })
     );
 
-    // Audit Log - Lazy loading enabled for tool discovery
+    // Audit Log Search
     this.server.tool(
       "search_audit_log",
       auditLogSchema.shape,
       wrapToolHandler(async (args: AuditLogArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleSearchAuditLog(this.getGraphClient(), args);
@@ -537,12 +536,11 @@ export class M365CoreServer {
       })
     );
 
-    // Alerts - Lazy loading enabled for tool discovery
+    // Alert Management
     this.server.tool(
       "manage_alerts",
       alertSchema.shape,
       wrapToolHandler(async (args: AlertArgs) => {
-        // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
         try {
           return await handleManageAlerts(this.getGraphClient(), args);
@@ -553,11 +551,12 @@ export class M365CoreServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );        }
+          );
+        }
       })
     );
 
-    // DLP Policy Management - Lazy loading enabled for tool discovery
+    // DLP Policies
     this.server.tool(
       "manage_dlp_policies",
       dlpPolicySchema.shape,
@@ -577,7 +576,7 @@ export class M365CoreServer {
       })
     );
 
-    // DLP Incident Management - Lazy loading enabled for tool discovery
+    // DLP Incidents
     this.server.tool(
       "manage_dlp_incidents",
       dlpIncidentSchema.shape,
@@ -597,7 +596,7 @@ export class M365CoreServer {
       })
     );
 
-    // Sensitivity Label Management - Lazy loading enabled for tool discovery
+    // Sensitivity Labels
     this.server.tool(
       "manage_sensitivity_labels",
       sensitivityLabelSchema.shape,
@@ -617,7 +616,7 @@ export class M365CoreServer {
       })
     );
 
-    // Intune macOS Device Management - Lazy loading enabled for tool discovery
+    // Intune macOS Devices
     this.server.tool(
       "manage_intune_macos_devices",
       intuneMacOSDeviceSchema.shape,
@@ -637,7 +636,7 @@ export class M365CoreServer {
       })
     );
 
-    // Intune macOS Policy Management - Lazy loading enabled for tool discovery
+    // Intune macOS Policies
     this.server.tool(
       "manage_intune_macos_policies",
       intuneMacOSPolicySchema.shape,
@@ -657,7 +656,7 @@ export class M365CoreServer {
       })
     );
 
-    // Intune macOS App Management - Lazy loading enabled for tool discovery
+    // Intune macOS Apps
     this.server.tool(
       "manage_intune_macos_apps",
       intuneMacOSAppSchema.shape,
@@ -677,7 +676,7 @@ export class M365CoreServer {
       })
     );
 
-    // Intune macOS Compliance Management - Lazy loading enabled for tool discovery
+    // Intune macOS Compliance
     this.server.tool(
       "manage_intune_macos_compliance",
       intuneMacOSComplianceSchema.shape,
@@ -697,7 +696,7 @@ export class M365CoreServer {
       })
     );
 
-    // Compliance Framework Management - Lazy loading enabled for tool discovery
+    // Compliance Frameworks
     this.server.tool(
       "manage_compliance_frameworks",
       complianceFrameworkSchema.shape,
@@ -717,7 +716,7 @@ export class M365CoreServer {
       })
     );
 
-    // Compliance Assessment Management - Lazy loading enabled for tool discovery
+    // Compliance Assessments
     this.server.tool(
       "manage_compliance_assessments",
       complianceAssessmentSchema.shape,
@@ -737,7 +736,7 @@ export class M365CoreServer {
       })
     );
 
-    // Compliance Monitoring - Lazy loading enabled for tool discovery
+    // Compliance Monitoring
     this.server.tool(
       "manage_compliance_monitoring",
       complianceMonitoringSchema.shape,
@@ -757,7 +756,7 @@ export class M365CoreServer {
       })
     );
 
-    // Evidence Collection - Lazy loading enabled for tool discovery
+    // Evidence Collection
     this.server.tool(
       "manage_evidence_collection",
       evidenceCollectionSchema.shape,
@@ -777,7 +776,7 @@ export class M365CoreServer {
       })
     );
 
-    // Gap Analysis - Lazy loading enabled for tool discovery
+    // Gap Analysis
     this.server.tool(
       "manage_gap_analysis",
       gapAnalysisSchema.shape,
@@ -797,7 +796,7 @@ export class M365CoreServer {
       })
     );
 
-    // Audit Reports - Lazy loading enabled for tool discovery
+    // Audit Reports
     this.server.tool(
       "generate_audit_reports",
       auditReportSchema.shape,
@@ -817,7 +816,7 @@ export class M365CoreServer {
       })
     );
 
-    // CIS Compliance - Lazy loading enabled for tool discovery
+    // CIS Compliance
     this.server.tool(
       "manage_cis_compliance",
       cisComplianceSchema.shape,
@@ -838,212 +837,14 @@ export class M365CoreServer {
     );
   }
   private setupResources(): void {
-    // Static resources with lazy Graph client initialization
+    // SharePoint Sites resource
     this.server.resource(
-      "current_user",
-      "m365://users/current",
-      async (uri: URL) => {
+      'sharepoint_sites',
+      new ResourceTemplate('sharepoint://sites/{siteId}', { list: undefined }),
+      async (uri: URL, variables: any) => {
         try {
-          const currentUser = await this.getGraphClient()
-            .api('/me')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(currentUser, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "tenant_info",
-      "m365://tenant/info",
-      async (uri: URL) => {
-        try {
-          const tenantInfo = await this.getGraphClient()
-            .api('/organization')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(tenantInfo, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "sharepoint_sites",
-      "m365://sharepoint/sites",
-      async (uri: URL) => {
-        try {
-          const sites = await this.getGraphClient()
-            .api('/sites?search=*')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(sites, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "sharepoint_admin_settings",
-      "m365://sharepoint/admin/settings",
-      async (uri: URL) => {
-        try {
-          const settings = await this.getGraphClient()
-            .api('/admin/sharepoint/settings')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(settings, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-
-    // Dynamic resources with templates
-    this.server.resource(
-      "user_info",
-      new ResourceTemplate("m365://users/{userId}", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-          const user = await this.getGraphClient()
-            .api(`/users/${variables.userId}`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(user, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "group_info",
-      new ResourceTemplate("m365://groups/{groupId}", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-          const group = await this.getGraphClient()
-            .api(`/groups/${variables.groupId}`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(group, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-      this.server.resource(
-      "sharepoint_site_info",
-      new ResourceTemplate("m365://sharepoint/sites/{siteId}", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-          const site = await this.getGraphClient()
-            .api(`/sites/${variables.siteId}`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(site, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "sharepoint_lists",
-      new ResourceTemplate("m365://sharepoint/sites/{siteId}/lists", { list: undefined }),
-      async (uri: URL, variables) => {        try {
-          const lists = await this.getGraphClient()
-            .api(`/sites/${variables.siteId}/lists`)
-            .get();
+          const client = this.getGraphClient();
+          const lists = await client.api(`/sites/${variables?.siteId}/lists`).get();
           
           return {
             contents: [
@@ -1062,15 +863,15 @@ export class M365CoreServer {
         }
       }
     );
-    
+
+    // SharePoint Lists resource
     this.server.resource(
-      "sharepoint_list_info",
-      new ResourceTemplate("m365://sharepoint/sites/{siteId}/lists/{listId}", { list: undefined }),
-      async (uri: URL, variables) => {
+      'sharepoint_lists',
+      new ResourceTemplate('sharepoint://sites/{siteId}/lists/{listId}', { list: undefined }),
+      async (uri: URL, variables: any) => {
         try {
-const  = await this.getGraphClient()
-            .api(`/sites/${variables.siteId}/lists/${variables.listId}`)
-            .get();
+          const client = this.getGraphClient();
+          const list = await client.api(`/sites/${variables?.siteId}/lists/${variables?.listId}`).get();
           
           return {
             contents: [
@@ -1089,15 +890,15 @@ const  = await this.getGraphClient()
         }
       }
     );
-    
+
+    // SharePoint List Items resource
     this.server.resource(
-      "sharepoint_list_items",
-      new ResourceTemplate("m365://sharepoint/sites/{siteId}/lists/{listId}/items", { list: undefined }),
-      async (uri: URL, variables) => {
+      'sharepoint_list_items',
+      new ResourceTemplate('sharepoint://sites/{siteId}/lists/{listId}/items', { list: undefined }),
+      async (uri: URL, variables: any) => {
         try {
-const  = await this.getGraphClient()
-            .api(`/sites/${variables.siteId}/lists/${variables.listId}/items?expand=fields`)
-            .get();
+          const client = this.getGraphClient();
+          const items = await client.api(`/sites/${variables?.siteId}/lists/${variables?.listId}/items?expand=fields`).get();
           
           return {
             contents: [
@@ -1116,17 +917,15 @@ const  = await this.getGraphClient()
         }
       }
     );
-    
-    // Additional M365 Resources (Security, Compliance, Intune, etc.)
-    
+
+    // Security alerts resource
     this.server.resource(
-      "security_alerts",
-      "m365://security/alerts",
+      'security_alerts',
+      'security://alerts',
       async (uri: URL) => {
         try {
-const  = await this.getGraphClient()
-            .api('/security/alerts_v2')
-            .get();
+          const client = this.getGraphClient();
+          const alerts = await client.api('/security/alerts_v2').get();
           
           return {
             contents: [
@@ -1145,15 +944,15 @@ const  = await this.getGraphClient()
         }
       }
     );
-    
+
+    // Security incidents resource
     this.server.resource(
-      "security_incidents",
-      "m365://security/incidents",
+      'security_incidents',
+      'security://incidents',
       async (uri: URL) => {
         try {
-const  = await this.getGraphClient()
-            .api('/security/incidents')
-            .get();
+          const client = this.getGraphClient();
+          const incidents = await client.api('/security/incidents').get();
           
           return {
             contents: [
@@ -1172,1186 +971,6 @@ const  = await this.getGraphClient()
         }
       }
     );
-    
-    this.server.resource(
-      "conditional_access_policies",
-      "m365://identity/conditionalAccess/policies",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/identity/conditionalAccess/policies')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(policies, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "applications",
-      "m365://applications",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/applications')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(applications, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "service_principals",
-      "m365://servicePrincipals",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/servicePrincipals')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(servicePrincipals, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "directory_roles",
-      "m365://directoryRoles",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/directoryRoles')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(roles, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "privileged_access",
-      "m365://privilegedAccess/azureAD/resources",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/privilegedAccess/azureAD/resources')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(resources, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "audit_logs_signin",
-      "m365://auditLogs/signIns",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/auditLogs/signIns')
-            .top(50)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(signIns, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "audit_logs_directory",
-      "m365://auditLogs/directoryAudits",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/auditLogs/directoryAudits')
-            .top(50)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(directoryAudits, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "intune_devices",
-      "m365://deviceManagement/managedDevices",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/deviceManagement/managedDevices')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(devices, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "intune_apps",
-      "m365://deviceAppManagement/mobileApps",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/deviceAppManagement/mobileApps')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(apps, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "intune_compliance_policies",
-      "m365://deviceManagement/deviceCompliancePolicies",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/deviceManagement/deviceCompliancePolicies')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(policies, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "intune_configuration_policies",
-      "m365://deviceManagement/deviceConfigurations",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/deviceManagement/deviceConfigurations')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(configurations, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "teams_list",
-      "m365://teams",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/teams')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(teams, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "mail_folders",
-      "m365://me/mailFolders",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/me/mailFolders')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(mailFolders, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "calendar_events",
-      "m365://me/events",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/me/events')
-            .top(25)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(events, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "onedrive",
-      "m365://me/drive",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/me/drive')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(drive, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "planner_plans",
-      "m365://planner/plans",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/planner/plans')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(plans, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "information_protection",
-      "m365://informationProtection/policy/labels",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/informationProtection/policy/labels')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(labels, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "risky_users",
-      "m365://identityProtection/riskyUsers",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/identityProtection/riskyUsers')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(riskyUsers, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "threat_assessment",
-      "m365://informationProtection/threatAssessmentRequests",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/informationProtection/threatAssessmentRequests')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(requests, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    // Dynamic resources with parameters
-    
-    this.server.resource(
-      "user_messages",
-      new ResourceTemplate("m365://users/{userId}/messages", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/users/${variables.userId}/messages`)
-            .top(25)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(messages, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "user_calendar",
-      new ResourceTemplate("m365://users/{userId}/calendar", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/users/${variables.userId}/calendar`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(calendar, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "user_drive",
-      new ResourceTemplate("m365://users/{userId}/drive", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/users/${variables.userId}/drive`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(drive, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "team_channels",
-      new ResourceTemplate("m365://teams/{teamId}/channels", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/teams/${variables.teamId}/channels`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(channels, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "team_members",
-      new ResourceTemplate("m365://teams/{teamId}/members", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/teams/${variables.teamId}/members`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(members, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "device_info",
-      new ResourceTemplate("m365://deviceManagement/managedDevices/{deviceId}", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/deviceManagement/managedDevices/${variables.deviceId}`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(device, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "app_assignments",
-      new ResourceTemplate("m365://deviceAppManagement/mobileApps/{appId}/assignments", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/deviceAppManagement/mobileApps/${variables.appId}/assignments`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(assignments, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "policy_assignments",
-      new ResourceTemplate("m365://deviceManagement/deviceCompliancePolicies/{policyId}/assignments", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/deviceManagement/deviceCompliancePolicies/${variables.policyId}/assignments`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(assignments, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "group_members",
-      new ResourceTemplate("m365://groups/{groupId}/members", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/groups/${variables.groupId}/members`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(members, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "group_owners",
-      new ResourceTemplate("m365://groups/{groupId}/owners", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/groups/${variables.groupId}/owners`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(owners, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "user_licenses",
-      new ResourceTemplate("m365://users/{userId}/licenseDetails", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/users/${variables.userId}/licenseDetails`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(licenses, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "user_groups",
-      new ResourceTemplate("m365://users/{userId}/memberOf", { list: undefined }),
-      async (uri: URL, variables) => {
-        try {
-const  = await this.getGraphClient()
-            .api(`/users/${variables.userId}/memberOf`)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(groups, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "security_score",
-      "m365://security/secureScores",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/security/secureScores')
-            .top(10)
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(secureScores, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "compliance_policies_dlp",
-      "m365://security/informationProtection/dlpPolicies",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/security/informationProtection/dlpPolicies')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(dlpPolicies, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "retention_policies",
-      "m365://security/labels/retentionLabels",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/security/labels/retentionLabels')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(retentionLabels, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "sensitivity_labels",
-      "m365://security/informationProtection/sensitivityLabels",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/security/informationProtection/sensitivityLabels')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(sensitivityLabels, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "communication_compliance",
-      "m365://compliance/communicationCompliance/policies",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/compliance/communicationCompliance/policies')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(policies, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "ediscovery_cases",
-      "m365://compliance/ediscovery/cases",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/compliance/ediscovery/cases')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(cases, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
-    
-    this.server.resource(
-      "subscribed_skus",
-      "m365://subscribedSkus",
-      async (uri: URL) => {
-        try {
-const  = await this.getGraphClient()
-            .api('/subscribedSkus')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(skus, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );  }
-
-  // --- Tool Handlers ---
-
-  private async handleDistributionList(args: DistributionListArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing distribution lists
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled Distribution List: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  private async handleSecurityGroup(args: SecurityGroupArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing security groups
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled Security Group: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  private async handleM365Group(args: M365GroupArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing M365 groups
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled M365 Group: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  private async handleAzureAdRoles(args: AzureAdRoleArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing Azure AD roles
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled Azure AD Role: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  private async handleAzureAdApps(args: AzureAdAppArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing Azure AD apps
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled Azure AD App: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  private async handleAzureAdDevices(args: AzureAdDeviceArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing Azure AD devices
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled Azure AD Device: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-  private async handleServicePrincipals(args: AzureAdSpArgs): Promise<{ content: { type: string; text: string; }[]; }> {
-    // Handler logic for managing service principals
-    // This is a placeholder implementation - replace with actual logic
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Handled Service Principal: ${JSON.stringify(args, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  // Enhanced tool handler with progress reporting for bulk operations
-  private async handleBulkOperation(args: any, operationType: string): Promise<string> {
-    const operationId = randomUUID();
-    
-    try {
-      this.reportProgress(operationId, 0, `Starting ${operationType} operation`);
-      
-      // Simulate bulk operation with progress updates
-      const items = args.items || [];
-      const total = items.length;
-      
-      for (let i = 0; i < total; i++) {
-        // Process each item
-        const progress = Math.round(((i + 1) / total) * 100);
-        this.reportProgress(operationId, progress, `Processing item ${i + 1} of ${total}`);
-        
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      const result = `Completed ${operationType} operation for ${total} items`;
-      this.completeOperation(operationId, result);
-      
-      return result;
-    } catch (error) {
-      this.completeOperation(operationId, { error: error instanceof Error ? error.message : 'Unknown error' });
-      throw error;
-    }
-  }
-  // Enhanced distribution list handler with progress reporting
-  private async handleDistributionListWithProgress(args: DistributionListArgs): Promise<any> {
-    const operationId = randomUUID();
-    
-    try {
-      this.reportProgress(operationId, 0, `Starting distribution list operation: ${args.action}`);
-      
-      // Call original handler
-      this.reportProgress(operationId, 50, 'Executing distribution list operation...');
-      const result = await this.handleDistributionList(args);
-      
-      this.reportProgress(operationId, 100, 'Distribution list operation completed');
-      this.completeOperation(operationId, result);
-      
-      // Notify resource change
-      if (args.action === 'create' || args.action === 'update' || args.action === 'delete') {
-        this.notifyResourceChange(`m365://distribution-lists/${args.listId || 'new'}`, 
-          args.action === 'create' ? 'created' : args.action === 'update' ? 'updated' : 'deleted');
-      }
-      
-      return result;
-    } catch (error) {
-      this.completeOperation(operationId, { error: error instanceof Error ? error.message : 'Unknown error' });
-      throw error;
-    }
   }
 
   // SSE and real-time capabilities
@@ -2370,13 +989,11 @@ const  = await this.getGraphClient()
       try {
         client.write(`data: ${JSON.stringify(update)}\n\n`);
       } catch (error) {
-        console.error('Error broadcasting update to SSE client:', error);
-        this.removeSSEClient(client);
+        this.sseClients.delete(client);
       }
     });
   }
 
-  // Progress reporting for long-running operations
   public reportProgress(operationId: string, progress: number, message?: string): void {
     const progressUpdate = {
       type: 'progress',
@@ -2402,7 +1019,6 @@ const  = await this.getGraphClient()
     this.broadcastUpdate(completion);
   }
 
-  // Enhanced notification system for resource changes
   public notifyResourceChange(resourceUri: string, changeType: 'created' | 'updated' | 'deleted'): void {
     const notification = {
       type: 'resourceChange',
@@ -2412,4 +1028,30 @@ const  = await this.getGraphClient()
     };
     
     this.broadcastUpdate(notification);
-  }}
+  }
+}
+
+// Start the server
+async function main() {
+  try {
+    const server = new M365CoreServer();
+    const transport = process.env.NODE_ENV === 'http'
+      ? new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID() // Added sessionIdGenerator
+        })
+      : new StdioServerTransport();
+
+    await server.server.connect(transport);
+    console.log(`M365 Core MCP Server running on ${process.env.NODE_ENV === 'http' ? `http://localhost:${PORT}` : 'stdio'}`);
+  } catch (error) {
+    console.error('Error starting M365 Core MCP Server:', error);
+    process.exit(1);
+  }
+}
+
+if (require.main === module) {
+  main().catch(error => {
+    console.error('Unhandled error:', error);
+    process.exit(1);
+  });
+}
