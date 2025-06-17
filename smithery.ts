@@ -241,10 +241,9 @@ export const resources = [
 ];
 
 // Server factory function for Smithery
-export function createServer(config: z.infer<typeof configSchema>) {
-  // Dynamic import to avoid circular dependencies
-  return import('./build/server.js').then(module => {
-    const { M365CoreMcpServer } = module;
-    return new M365CoreMcpServer();
-  });
+export async function createServer(config: z.infer<typeof configSchema>) {
+  // Dynamic import at runtime to avoid compilation issues
+  const module = await import('./build/server.js');
+  const { M365CoreServer } = module;
+  return new M365CoreServer();
 }
