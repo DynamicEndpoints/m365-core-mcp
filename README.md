@@ -41,9 +41,9 @@ For detailed information about all new resources and prompts, see [EXTENDED_FEAT
 Added several new tools to expand Microsoft Entra ID management and Security & Compliance capabilities:
 
 **Entra ID Management:**
-- `manage_azure_ad_roles`: Manage Entra ID directory roles and assignments.
-- `manage_azure_ad_apps`: Manage Entra ID application registrations (list, view, owners).
-- `manage_azure_ad_devices`: Manage Entra ID device objects (list, view, enable/disable/delete).
+- `manage_azuread_roles`: Manage Entra ID directory roles and assignments.
+- `manage_azuread_apps`: Manage Entra ID application registrations (list, view, owners).
+- `manage_azuread_devices`: Manage Entra ID device objects (list, view, enable/disable/delete).
 - `manage_service_principals`: Manage Entra ID Service Principals (list, view, owners).
 
 **Generic API Access:**
@@ -72,48 +72,49 @@ An MCP server that provides tools for managing Microsoft 365 core services inclu
 
 ## Features
 
+### Core Microsoft 365 Management
+- **Distribution Lists**: Create, delete, manage membership and settings
+- **Security Groups**: Full lifecycle management with mail-enabled options
+- **Microsoft 365 Groups**: Create, configure, and manage owners/members
+- **Exchange Settings**: Mailbox, transport, organization, and retention policies
+- **User Management**: Get and update user settings and configurations
+- **Offboarding Processes**: Automated user offboarding with configurable options
+
 ### SharePoint Management
-- Create and manage SharePoint sites
-- Configure site settings and permissions
-- Create and manage SharePoint lists
-- Add, update, and retrieve list items
-- Manage site users and permissions
+- **Site Management**: Create, update, delete sites with template support
+- **List Management**: Create, configure, and manage SharePoint lists
+- **Item Management**: Add, update, and retrieve list items
+- **Permissions**: Manage site users and permissions
+- **Settings**: Configure site-level and organization settings
 
-### Distribution List Management
-- Create and delete distribution lists
-- Add/remove members
-- Update list settings
-- Configure list properties (visibility, moderation, etc.)
+### Azure AD Management
+- **Role Management**: Assign and manage directory roles and role assignments
+- **Application Management**: Manage app registrations, owners, and settings
+- **Device Management**: Enable, disable, delete Azure AD devices
+- **Service Principals**: Manage service principal objects and ownership
 
-### Security Group Management
-- Create and delete security groups
-- Manage group membership
-- Configure mail-enabled settings
-- Update group properties
+### Security & Compliance
+- **Audit Logging**: Search and analyze Microsoft 365 Unified Audit Log
+- **Security Alerts**: List, view, and manage security alerts across Microsoft products
+- **Data Loss Prevention**: Create, configure, and manage DLP policies and incidents
+- **Sensitivity Labels**: Manage Microsoft Purview sensitivity labels and policies
+- **Compliance Frameworks**: Support for HITRUST, ISO27001, SOC2, CIS Controls
+- **Assessment & Monitoring**: Automated compliance assessments and continuous monitoring
+- **Evidence Collection**: Automated evidence gathering for compliance audits
+- **Gap Analysis**: Cross-framework compliance gap analysis and remediation planning
 
-### Microsoft 365 Group Management
-- Create and delete M365 groups
-- Manage owners and members
-- Configure group settings
-- Control external access
+### Intune Device Management (macOS Focus)
+- **Device Inventory**: List, filter, and manage macOS devices in Intune
+- **Policy Management**: Create, deploy, and monitor macOS configuration policies
+- **Application Management**: Deploy and manage macOS applications via Intune
+- **Compliance Monitoring**: Track and enforce macOS device compliance policies
 
-### Exchange Settings Management
-- Configure mailbox settings
-- Manage transport rules
-- Set organization-wide policies
-- Configure retention policies
-
-### User Management
-- Get and update user settings
-- Configure mailbox properties
-- Manage user permissions
-
-### Offboarding Process
-- Disable user accounts
-- Revoke access tokens
-- Backup user data
-- Convert to shared mailbox
-- Automated cleanup
+### Advanced Features
+- **Dynamic API Access**: Call arbitrary Microsoft Graph and Azure Resource Management APIs
+- **Real-time Capabilities**: Server-sent events, progress reporting, streaming responses
+- **Intelligent Prompts**: 5 comprehensive analysis prompts for security, compliance, and governance
+- **Extended Resources**: 44 resources covering security, compliance, device management, and collaboration
+- **Modern MCP Features**: Enhanced error handling, response validation, lazy loading
 
 ## Setup
 
@@ -144,7 +145,7 @@ npx -y @smithery/cli install @DynamicEndpoints/m365-core-mcp --client claude
    # STATELESS=false   # Set to 'true' to use stateless HTTP mode (no session management)
    ```
 4. Register an application in Azure AD:
-   - Required permissions:
+   - **Required Microsoft Graph permissions:**
      - Directory.ReadWrite.All
      - Group.ReadWrite.All
      - User.ReadWrite.All
@@ -153,6 +154,26 @@ npx -y @smithery/cli install @DynamicEndpoints/m365-core-mcp --client claude
      - Organization.ReadWrite.All
      - Sites.ReadWrite.All
      - Sites.Manage.All
+     - SecurityEvents.ReadWrite.All
+     - SecurityActions.ReadWrite.All
+     - Device.ReadWrite.All
+     - DeviceManagementConfiguration.ReadWrite.All
+     - DeviceManagementManagedDevices.ReadWrite.All
+     - DeviceManagementApps.ReadWrite.All
+     - InformationProtectionPolicy.ReadWrite.All
+     - Policy.ReadWrite.ConditionalAccess
+     - RoleManagement.ReadWrite.Directory
+     - AuditLog.Read.All
+     - Reports.Read.All
+     - ThreatIndicators.ReadWrite.OwnedBy
+     - IdentityRiskyUser.ReadWrite.All
+     - IdentityRiskEvent.Read.All
+
+   - **Required Azure RBAC roles** (for Azure Resource Management):
+     - Security Admin (for security-related operations)
+     - Compliance Administrator (for compliance management)
+     - Intune Administrator (for device management)
+     - Reports Reader (for audit and reporting functions)
 
 5. Build the server:
    ```bash
@@ -209,23 +230,139 @@ PORT=3000         # Port for the HTTP server
 
 The server provides MCP tools and resources that can be used to manage various aspects of Microsoft 365. Each tool accepts specific parameters and returns structured responses.
 
+### Tools
+
+The server provides **29 comprehensive tools** for Microsoft 365 management:
+
+#### Core Management Tools
+- `manage_distribution_lists` - Create, delete, and manage distribution lists and membership
+- `manage_security_groups` - Create, delete, and manage security groups and membership  
+- `manage_m365_groups` - Create, delete, and manage Microsoft 365 groups and membership
+- `manage_exchange_settings` - Configure mailbox, transport, organization, and retention settings
+- `manage_user_settings` - Get and update user settings and configurations
+- `manage_offboarding` - Automated user offboarding processes with configurable options
+
+#### SharePoint Management Tools
+- `manage_sharepoint_sites` - Create, update, delete SharePoint sites and manage users
+- `manage_sharepoint_lists` - Create, update, delete SharePoint lists and manage items
+
+#### Azure AD Management Tools
+- `manage_azuread_roles` - Manage Azure AD directory roles and role assignments
+- `manage_azuread_apps` - Manage Azure AD application registrations and owners
+- `manage_azuread_devices` - Manage Azure AD device objects (enable, disable, delete)
+- `manage_service_principals` - Manage Azure AD Service Principals and ownership
+
+#### Security & Compliance Tools
+- `search_audit_log` - Search the Microsoft 365 Unified Audit Log
+- `manage_alerts` - List and view security alerts from Microsoft security products
+- `manage_dlp_policies` - Manage Data Loss Prevention policies and configurations
+- `manage_dlp_incidents` - Handle DLP policy violations and incident management
+- `manage_sensitivity_labels` - Manage Microsoft Purview sensitivity labels
+
+#### Intune Device Management Tools
+- `manage_intune_macos_devices` - Manage Intune macOS devices and enrollment
+- `manage_intune_macos_policies` - Configure and deploy macOS device policies
+- `manage_intune_macos_apps` - Deploy and manage macOS applications via Intune
+- `manage_intune_macos_compliance` - Monitor and enforce macOS device compliance
+
+#### Compliance Framework Tools
+- `manage_compliance_frameworks` - Configure compliance frameworks (HITRUST, ISO27001, SOC2)
+- `manage_compliance_assessments` - Run and manage compliance assessments
+- `manage_compliance_monitoring` - Monitor compliance status and configure alerts
+- `manage_evidence_collection` - Collect and manage compliance evidence
+- `manage_gap_analysis` - Perform compliance gap analysis and remediation planning
+- `manage_cis_compliance` - Manage CIS Controls compliance and benchmarks
+
+#### Audit & Reporting Tools
+- `generate_audit_reports` - Generate comprehensive audit reports for various frameworks
+
+#### Dynamic API Access
+- `dynamicendpoints m365 assistant` - Call arbitrary Microsoft Graph or Azure Resource Management API endpoints
+
 ### Resources
 
-The server provides the following resources:
+The server provides **44 comprehensive resources** covering security, compliance, device management, and collaboration:
 
-- `m365://users/current` - Information about the currently authenticated user
-- `m365://tenant/info` - Information about the Microsoft 365 tenant
-- `m365://sharepoint/sites` - List of SharePoint sites in the tenant
-- `m365://sharepoint/admin/settings` - SharePoint admin settings
+#### Core Resources
+- `sharepoint_sites` - SharePoint site information and configuration
+- `sharepoint_lists` - SharePoint list structures and metadata  
+- `sharepoint_list_items` - Items within SharePoint lists
+- `security_incidents` - Microsoft security incidents and details
 
-Dynamic resources with URI templates:
+#### Extended Security Resources (20 resources)
+- Security alerts and incidents from Microsoft Defender
+- Conditional access policies and assignments
+- Privileged access management data
+- Threat intelligence and vulnerability assessments
+- Identity protection risks and policies
+- Authentication methods and security defaults
+- Compliance policies and their status
+- Data governance and retention policies
+- Insider risk management insights
+- Security baselines and configurations
 
-- `m365://users/{userId}` - Information about a specific user
-- `m365://groups/{groupId}` - Information about a specific group
-- `m365://sharepoint/sites/{siteId}` - Information about a specific SharePoint site
-- `m365://sharepoint/sites/{siteId}/lists` - Lists in a specific SharePoint site
-- `m365://sharepoint/sites/{siteId}/lists/{listId}` - Information about a specific SharePoint list
-- `m365://sharepoint/sites/{siteId}/lists/{listId}/items` - Items in a specific SharePoint list
+#### Device Management Resources (10 resources)
+- Intune device inventories and compliance status
+- Mobile application management policies
+- Device configuration profiles and assignments
+- Compliance policies for various platforms
+- App protection policies and status
+- Device enrollment configurations
+- Update policies and deployment rings
+- Certificate profiles and management
+- Wi-Fi and VPN configuration profiles
+- Endpoint protection policies
+
+#### Collaboration Resources (10 resources)
+- Microsoft Teams structures and policies
+- Exchange Online configurations and settings
+- Calendar and scheduling information
+- OneDrive storage and sharing policies
+- Planner tasks and project management
+- Viva Engage (Yammer) communities
+- Power Platform environments and apps
+- Booking services and appointments
+- Whiteboard collaboration data
+- Stream video content and policies
+
+#### Extended Dynamic Resources
+All resources support URI templates for specific object access:
+- `m365://security/alerts/{alertId}` - Specific security alert details
+- `m365://devices/{deviceId}` - Individual device information
+- `m365://users/{userId}/compliance` - User-specific compliance status
+- `m365://teams/{teamId}/governance` - Team governance and policies
+
+### Intelligent Prompts
+
+The server provides **5 comprehensive prompts** for automated analysis and recommendations:
+
+#### Security Assessment Prompt
+- **Purpose**: Comprehensive security posture analysis with actionable recommendations
+- **Scope**: Security policies, access controls, threat detection, identity protection
+- **Output**: Risk assessment, security gaps, remediation roadmap
+
+#### Compliance Review Prompt  
+- **Purpose**: Framework-specific compliance gap analysis
+- **Frameworks**: SOC2, ISO27001, NIST, GDPR, HIPAA, CIS Controls
+- **Scope**: Control implementation status, evidence collection, audit readiness
+- **Output**: Compliance dashboard, gap analysis, remediation plans
+
+#### User Access Review Prompt
+- **Purpose**: Individual and organization-wide access rights analysis
+- **Scope**: Role assignments, group memberships, application access, privileged accounts
+- **Output**: Access recommendations, risk-based prioritization, cleanup tasks
+
+#### Device Compliance Analysis Prompt
+- **Purpose**: Intune device management and compliance assessment
+- **Scope**: Device policies, compliance status, security configurations, app management
+- **Output**: Compliance reports, policy recommendations, deployment guidance
+
+#### Collaboration Governance Prompt
+- **Purpose**: Teams and SharePoint governance analysis
+- **Scope**: Team structures, sharing policies, external access, data governance
+- **Output**: Governance recommendations, policy suggestions, compliance alignment
+
+Each prompt provides contextual analysis, actionable insights, and integration with the corresponding management tools for immediate remediation.
 
 ### Example Tool Usage
 
@@ -244,6 +381,50 @@ await callTool('manage_security_groups', {
   displayName: 'IT Admins',
   description: 'IT Administration Team',
   members: ['admin1@company.com']
+});
+
+// Managing Azure AD roles (note: using correct tool name)
+await callTool('manage_azuread_roles', {
+  action: 'assign_role',
+  roleId: 'role-id-here',
+  principalId: 'user-id-here'
+});
+
+// Managing DLP policies
+await callTool('manage_dlp_policies', {
+  action: 'create',
+  policyName: 'Financial Data Protection',
+  rules: [{
+    name: 'Block Credit Cards',
+    conditions: { contentContainsSensitiveInfo: ['CreditCardNumber'] },
+    actions: { blockAccess: true }
+  }]
+});
+
+// Managing Intune macOS devices
+await callTool('manage_intune_macos_devices', {
+  action: 'list',
+  filters: { complianceState: 'compliant' }
+});
+
+// Running compliance assessments
+await callTool('manage_compliance_assessments', {
+  action: 'run_assessment',
+  framework: 'iso27001',
+  scope: ['access_control', 'data_protection'],
+  settings: {
+    automated: true,
+    generateRemediation: true
+  }
+});
+
+// Generating audit reports
+await callTool('generate_audit_reports', {
+  framework: 'soc2',
+  reportType: 'comprehensive',
+  dateRange: { start: '2025-01-01', end: '2025-06-16' },
+  format: 'pdf',
+  includeEvidence: true
 });
 
 // Managing Exchange settings
@@ -280,6 +461,14 @@ await callTool('manage_sharepoint_lists', {
     { name: 'DueDate', type: 'dateTime' },
     { name: 'Status', type: 'choice', choices: ['Not Started', 'In Progress', 'Completed'] }
   ]
+});
+
+// Dynamic API calls for custom scenarios
+await callTool('dynamicendpoints m365 assistant', {
+  apiType: 'graph',
+  path: '/me/messages',
+  method: 'get',
+  queryParams: { '$top': '10', '$filter': 'isRead eq false' }
 });
 ```
 
