@@ -924,34 +924,7 @@ export class M365CoreServer {
           );
         }
       }
-    );
-
-    // Security alerts resource
-    this.server.resource(
-      'security_alerts',
-      'security://alerts',
-      async (uri: URL) => {
-        try {
-          const client = this.getGraphClient();
-          const alerts = await client.api('/security/alerts_v2').get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(alerts, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      }
-    );
+    );    // Security alerts resource - moved to extended-resources.ts to avoid duplication
 
     // Security incidents resource
     this.server.resource(
