@@ -128,13 +128,14 @@ import {
   evidenceCollectionSchema,
   gapAnalysisSchema,
   auditReportSchema,
-  cisComplianceSchema,
-  m365CoreTools,
+  cisComplianceSchema,  m365CoreTools,
 } from './tool-definitions.js';
 
 import { intuneTools, createIntunePolicySchema } from './tool-definitions-intune.js';
+import { enhancedIntuneTools } from './tool-definitions-intune-enhanced.js';
 
 import { handleCreateIntunePolicy } from './handlers/intune-handler.js';
+import { handleCreateIntunePolicy as handleCreateIntunePolicyEnhanced } from './handlers/intune-handler-enhanced.js';
 import {
   handleDistributionLists,
   handleSecurityGroups,
@@ -1079,12 +1080,11 @@ export class M365CoreServer {
           );
         }
       })
-    );
-
-    // Intune Policy Creation Tool - Unified and schema-driven
+    );    // Intune Policy Creation Tool - Unified and schema-driven
     intuneTools.forEach(tool => {
       this.server.tool(
         tool.name,
+        tool.description,
         (tool.inputSchema as any).shape,
         wrapToolHandler(async (args: any) => {
           this.validateCredentials();
@@ -1097,6 +1097,29 @@ export class M365CoreServer {
             throw new McpError(
               ErrorCode.InternalError,
               `Error executing ${tool.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        })
+      );
+    });
+
+    // Enhanced Intune Policy Creation Tools - Advanced validation and templates
+    enhancedIntuneTools.forEach(tool => {
+      this.server.tool(
+        `enhanced_${tool.name}`,
+        tool.description,
+        (tool.inputSchema as any).shape,
+        wrapToolHandler(async (args: any) => {
+          this.validateCredentials();
+          try {
+            return await handleCreateIntunePolicyEnhanced(this.getGraphClient(), args);
+          } catch (error) {
+            if (error instanceof McpError) {
+              throw error;
+            }
+            throw new McpError(
+              ErrorCode.InternalError,
+              `Error executing enhanced_${tool.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
           }
         })
