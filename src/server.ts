@@ -249,9 +249,16 @@ export class M365CoreServer {
   // Enhanced utility instances
   private enhancedTokenCache: TokenCache = new TokenCache();
   private rateLimiter: RateLimiter = new RateLimiter();
-    constructor() {    this.server = new McpServer({
+  
+  // Lazy loading state
+  private isAuthenticated: boolean = false;
+  private authenticationPromise: Promise<void> | null = null;
+  private toolsRegistered: boolean = false;
+  private resourcesRegistered: boolean = false;
+  constructor() {
+    this.server = new McpServer({
       name: 'm365-core-server',
-      version: '1.1.0', // Enhanced version with improved API capabilities
+      version: '1.1.0', // Enhanced version with improved API capabilities and lazy loading
       capabilities: {
         tools: {
           listChanged: true
@@ -271,16 +278,78 @@ export class M365CoreServer {
           streamingResponses: true
         }
       }
-    });
-
-    this.setupTools();
-    this.setupResources();
+    });    // Initialize lazy loading - tools and resources will be registered on first use
+    this.setupLazyLoading();
     
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
     });
   }
+
+  // Lazy loading setup - tools and resources are registered on first use
+  private setupLazyLoading(): void {
+    console.log('🚀 Setting up lazy loading for M365 Core MCP Server');
+    console.log('   Tools and resources will be registered when first accessed');
+    console.log('   Authentication will occur only when tools are executed');
+  }
+
+  // Ensure authentication is performed before tool execution
+  async ensureAuthenticated(): Promise<void> {
+    if (this.isAuthenticated) {
+      return;
+    }
+
+    if (this.authenticationPromise) {
+      return this.authenticationPromise;
+    }
+
+    this.authenticationPromise = this.performAuthentication();
+    return this.authenticationPromise;
+  }
+
+  // Perform the actual authentication
+  private async performAuthentication(): Promise<void> {
+    try {
+      console.log('🔐 Performing authentication on demand...');
+      this.validateCredentials();
+      
+      // Test authentication by getting a token
+      await this.getAccessToken(apiConfigs.graph.scope);
+      
+      this.isAuthenticated = true;
+      console.log('✅ Authentication successful');
+    } catch (error) {
+      this.authenticationPromise = null;
+      console.error('❌ Authentication failed:', error);
+      throw error;
+    }
+  }
+
+  // Ensure tools are registered (lazy loading)
+  async ensureToolsRegistered(): Promise<void> {
+    if (this.toolsRegistered) {
+      return;
+    }
+
+    console.log('🔧 Registering tools on first use...');
+    this.setupTools();
+    this.toolsRegistered = true;
+    console.log('✅ Tools registered successfully');
+  }
+
+  // Ensure resources are registered (lazy loading)
+  async ensureResourcesRegistered(): Promise<void> {
+    if (this.resourcesRegistered) {
+      return;
+    }
+
+    console.log('📁 Registering resources on first use...');
+    this.setupResources();
+    this.resourcesRegistered = true;
+    console.log('✅ Resources registered successfully');
+  }
+
   private getGraphClient(): Client {
     if (!this.graphClient) {
       // Note: Credentials will be validated when first API call is made
@@ -399,16 +468,14 @@ export class M365CoreServer {
           ]
         };
       })
-    );
-
-    // Distribution Lists - Enhanced with lazy loading and better error handling
+    );    // Distribution Lists - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_distribution_lists",
       "Create, update, delete, and manage Exchange distribution lists with members and properties",
       distributionListSchema.shape,
       wrapToolHandler(async (args: DistributionListArgs) => {
-        // Lazy loading: Validate credentials only when tool is executed
-        this.validateCredentials();
+        // Lazy authentication: Only authenticate when tool is executed
+        await this.ensureAuthenticated();
         try {
           return await handleDistributionLists(this.getGraphClient(), args);
         } catch (error) {
@@ -421,13 +488,15 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Security Groups - Enhanced with lazy loading and better error handling
+    );
+
+    // Security Groups - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_security_groups",
       "Create, update, delete, and manage Azure AD security groups with members and properties",
       securityGroupSchema.shape,
       wrapToolHandler(async (args: SecurityGroupArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleSecurityGroups(this.getGraphClient(), args);
         } catch (error) {
@@ -440,13 +509,13 @@ export class M365CoreServer {
           );
         }
       })
-    );    // M365 Groups - Enhanced with lazy loading and better error handling
+    );// M365 Groups - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_m365_groups",
       "Create, update, delete, and manage Microsoft 365 groups with Teams integration and member management",
       m365GroupSchema.shape,
       wrapToolHandler(async (args: M365GroupArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleM365Groups(this.getGraphClient(), args);
         } catch (error) {
@@ -465,7 +534,7 @@ export class M365CoreServer {
       "Configure and manage Exchange Online settings including mailbox configurations, transport rules, and mail flow",
       exchangeSettingsSchema.shape,
       wrapToolHandler(async (args: ExchangeSettingsArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleExchangeSettings(this.getGraphClient(), args);
         } catch (error) {
@@ -484,7 +553,7 @@ export class M365CoreServer {
       "Get, update, and manage Azure AD user settings including profiles, licenses, and account properties",
       userManagementSchema.shape,
       wrapToolHandler(async (args: UserManagementArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleUserSettings(this.getGraphClient(), args);
         } catch (error) {
@@ -503,7 +572,7 @@ export class M365CoreServer {
       "Securely offboard users by disabling accounts, revoking access, transferring data, and managing group memberships",
       offboardingSchema.shape,
       wrapToolHandler(async (args: OffboardingArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleOffboarding(this.getGraphClient(), args);
         } catch (error) {
@@ -522,7 +591,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage SharePoint sites including permissions, properties, and site collections",
       sharePointSiteSchema.shape,
       wrapToolHandler(async (args: SharePointSiteArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleSharePointSite(this.getGraphClient(), args);
         } catch (error) {
@@ -541,7 +610,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage SharePoint lists including columns, items, views, and permissions",
       sharePointListSchema.shape,
       wrapToolHandler(async (args: SharePointListArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleSharePointList(this.getGraphClient(), args);
         } catch (error) {
@@ -560,7 +629,7 @@ export class M365CoreServer {
       "Assign, remove, and manage Azure AD directory roles and role memberships for users and groups",
       azureAdRoleSchema.shape,
       wrapToolHandler(async (args: AzureAdRoleArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleAzureAdRoles(this.getGraphClient(), args);
         } catch (error) {
@@ -573,13 +642,15 @@ export class M365CoreServer {
           );
         }
       })
-    );    // Azure AD Apps - Enhanced with lazy loading and better error handling
+    );
+
+    // Azure AD Apps - Enhanced with lazy loading and better error handling
     this.server.tool(
       "manage_azuread_apps",
       "Create, update, delete, and manage Azure AD application registrations including permissions and certificates",
       azureAdAppSchema.shape,
       wrapToolHandler(async (args: AzureAdAppArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleAzureAdApps(this.getGraphClient(), args);
         } catch (error) {
@@ -598,7 +669,7 @@ export class M365CoreServer {
       "Register, update, delete, and manage Azure AD joined devices including compliance and configuration",
       azureAdDeviceSchema.shape,
       wrapToolHandler(async (args: AzureAdDeviceArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleAzureAdDevices(this.getGraphClient(), args);
         } catch (error) {
@@ -617,7 +688,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage Azure AD service principals including credentials and permissions",
       azureAdSpSchema.shape,
       wrapToolHandler(async (args: AzureAdSpArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleServicePrincipals(this.getGraphClient(), args);
         } catch (error) {
@@ -635,7 +706,7 @@ export class M365CoreServer {
       "Enhanced Microsoft Graph and Azure Resource Management API client with retry logic, rate limiting, field selection, and multiple response formats",
       callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleCallMicrosoftApi(
             this.getGraphClient(), 
@@ -661,7 +732,7 @@ export class M365CoreServer {
       "Search and retrieve Microsoft 365 audit logs with filtering by date, user, activity, and workload",
       auditLogSchema.shape,
       wrapToolHandler(async (args: AuditLogArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleSearchAuditLog(this.getGraphClient(), args);
         } catch (error) {
@@ -680,7 +751,7 @@ export class M365CoreServer {
       "List, get, and manage Microsoft 365 security alerts with filtering and status updates",
       alertSchema.shape,
       wrapToolHandler(async (args: AlertArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleManageAlerts(this.getGraphClient(), args);
         } catch (error) {
@@ -699,7 +770,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage Data Loss Prevention (DLP) policies including rules, conditions, and actions",
       dlpPolicySchema.shape,
       wrapToolHandler(async (args: DLPPolicyArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleDLPPolicies(this.getGraphClient(), args);
         } catch (error) {
@@ -718,7 +789,7 @@ export class M365CoreServer {
       "Investigate, review, and manage Data Loss Prevention (DLP) incidents including status updates and remediation",
       dlpIncidentSchema.shape,
       wrapToolHandler(async (args: DLPIncidentArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleDLPIncidents(this.getGraphClient(), args);
         } catch (error) {
@@ -737,7 +808,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage Microsoft Purview sensitivity labels including policies and auto-labeling",
       sensitivityLabelSchema.shape,
       wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleDLPSensitivityLabels(this.getGraphClient(), args);
         } catch (error) {
@@ -756,7 +827,7 @@ export class M365CoreServer {
       "Manage Intune macOS devices including enrollment, compliance, configuration, and remote actions",
       intuneMacOSDeviceSchema.shape,
       wrapToolHandler(async (args: IntuneMacOSDeviceArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneMacOSDevices(this.getGraphClient(), args);
         } catch (error) {
@@ -777,7 +848,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage Intune macOS configuration policies including device restrictions and compliance",
       intuneMacOSPolicySchema.shape,
       wrapToolHandler(async (args: IntuneMacOSPolicyArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneMacOSPolicies(this.getGraphClient(), args);
         } catch (error) {
@@ -798,7 +869,7 @@ export class M365CoreServer {
       "Deploy, update, remove, and manage macOS applications through Microsoft Intune including assignment and monitoring",
       intuneMacOSAppSchema.shape,
       wrapToolHandler(async (args: IntuneMacOSAppArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneMacOSApps(this.getGraphClient(), args);
         } catch (error) {
@@ -819,7 +890,7 @@ export class M365CoreServer {
       "Configure and manage macOS device compliance policies in Intune including requirements and actions",
       intuneMacOSComplianceSchema.shape,
       wrapToolHandler(async (args: IntuneMacOSComplianceArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneMacOSCompliance(this.getGraphClient(), args);
         } catch (error) {
@@ -839,7 +910,7 @@ export class M365CoreServer {
       "Manage Intune Windows devices including enrollment, compliance, configuration, and remote actions",
       intuneWindowsDeviceSchema.shape,
       wrapToolHandler(async (args: IntuneWindowsDeviceArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneWindowsDevices(this.getGraphClient(), args);
         } catch (error) {
@@ -860,7 +931,7 @@ export class M365CoreServer {
       "Create, update, delete, and manage Intune Windows configuration policies including device restrictions and security",
       intuneWindowsPolicySchema.shape,
       wrapToolHandler(async (args: IntuneWindowsPolicyArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneWindowsPolicies(this.getGraphClient(), args);
         } catch (error) {
@@ -881,7 +952,7 @@ export class M365CoreServer {
       "Deploy, update, remove, and manage Windows applications through Microsoft Intune including assignment and monitoring",
       intuneWindowsAppSchema.shape,
       wrapToolHandler(async (args: IntuneWindowsAppArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneWindowsApps(this.getGraphClient(), args);
         } catch (error) {
@@ -902,7 +973,7 @@ export class M365CoreServer {
       "Configure and manage Windows device compliance policies in Intune including requirements and actions",
       intuneWindowsComplianceSchema.shape,
       wrapToolHandler(async (args: IntuneWindowsComplianceArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleIntuneWindowsCompliance(this.getGraphClient(), args);
         } catch (error) {
@@ -923,7 +994,7 @@ export class M365CoreServer {
       "Assess and manage compliance against various frameworks (SOC2, ISO27001, NIST, GDPR, HIPAA)",
       complianceFrameworkSchema.shape,
       wrapToolHandler(async (args: ComplianceFrameworkArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleComplianceFrameworks(this.getGraphClient(), args);
         } catch (error) {
@@ -944,7 +1015,7 @@ export class M365CoreServer {
       "Create, run, and manage compliance assessments with automated scoring and gap analysis",
       complianceAssessmentSchema.shape,
       wrapToolHandler(async (args: ComplianceAssessmentArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleComplianceAssessments(this.getGraphClient(), args);
         } catch (error) {
@@ -965,7 +1036,7 @@ export class M365CoreServer {
       "Monitor compliance status in real-time with alerts, reporting, and automated remediation workflows",
       complianceMonitoringSchema.shape,
       wrapToolHandler(async (args: ComplianceMonitoringArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleComplianceMonitoring(this.getGraphClient(), args);
         } catch (error) {
@@ -986,7 +1057,7 @@ export class M365CoreServer {
       "Collect, organize, and manage compliance evidence including automated evidence gathering and validation",
       evidenceCollectionSchema.shape,
       wrapToolHandler(async (args: EvidenceCollectionArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleEvidenceCollection(this.getGraphClient(), args);
         } catch (error) {
@@ -1007,7 +1078,7 @@ export class M365CoreServer {
       "Perform gap analysis against compliance frameworks with prioritized remediation recommendations",
       gapAnalysisSchema.shape,
       wrapToolHandler(async (args: GapAnalysisArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleGapAnalysis(this.getGraphClient(), args);
         } catch (error) {
@@ -1027,7 +1098,7 @@ export class M365CoreServer {
       "generate_audit_reports",
       auditReportSchema.shape,
       wrapToolHandler(async (args: AuditReportArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleAuditReports(this.getGraphClient(), args);
         } catch (error) {
@@ -1048,7 +1119,7 @@ export class M365CoreServer {
       "Assess and manage CIS (Center for Internet Security) compliance benchmarks and controls",
       cisComplianceSchema.shape,
       wrapToolHandler(async (args: CISComplianceArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleCISCompliance(this.getGraphClient(), args);
         } catch (error) {
@@ -1067,7 +1138,7 @@ export class M365CoreServer {
       "Create accurate and complete Intune policies for Windows or macOS with validated settings and proper structure",
       createIntunePolicySchema.shape,
       wrapToolHandler(async (args: CreateIntunePolicyArgs) => {
-        this.validateCredentials();
+        await this.ensureAuthenticated();
         try {
           return await handleCreateIntunePolicy(this.getGraphClient(), args);
         } catch (error) {
@@ -1087,7 +1158,7 @@ export class M365CoreServer {
         tool.description,
         (tool.inputSchema as any).shape,
         wrapToolHandler(async (args: any) => {
-          this.validateCredentials();
+          await this.ensureAuthenticated();
           try {
             return await handleCreateIntunePolicy(this.getGraphClient(), args);
           } catch (error) {
@@ -1110,7 +1181,7 @@ export class M365CoreServer {
         tool.description,
         (tool.inputSchema as any).shape,
         wrapToolHandler(async (args: any) => {
-          this.validateCredentials();
+          await this.ensureAuthenticated();
           try {
             return await handleCreateIntunePolicyEnhanced(this.getGraphClient(), args);
           } catch (error) {
@@ -1206,16 +1277,16 @@ export class M365CoreServer {
           );
         }
       }
-    );    // Security alerts resource - moved to extended-resources.ts to avoid duplication
-
-    // Security incidents resource
+    );    // Security alerts resource - moved to extended-resources.ts to avoid duplication    // Security incidents resource - using modern API
     this.server.resource(
       'security_incidents',
       'security://incidents',
       async (uri: URL) => {
         try {
-          const client = this.getGraphClient();
-          const incidents = await client.api('/security/incidents').get();
+          const incidents = await this.makeGraphApiCall('/security/incidents', {
+            select: ['id', 'displayName', 'status', 'severity', 'createdDateTime', 'lastUpdateDateTime'],
+            top: 50
+          });
           
           return {
             contents: [
@@ -1229,17 +1300,21 @@ export class M365CoreServer {
         } catch (error) {
           throw new McpError(
             ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );        }
+            `Error reading security incidents: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
       }
-    );    // URI template resources for dynamic access
+    );
+
+    // URI template resources for dynamic access
     this.server.resource(
       'security_alert_details',
       new ResourceTemplate('m365://security/alerts/{alertId}', { list: undefined }),
       async (uri: URL, variables: any) => {
         try {
-          const client = this.getGraphClient();
-          const alert = await client.api(`/security/alerts_v2/${variables?.alertId}`).get();
+          const alert = await this.makeGraphApiCall(`/security/alerts_v2/${variables?.alertId}`, {
+            select: ['id', 'displayName', 'severity', 'status', 'createdDateTime', 'evidence']
+          });
           
           return {
             contents: [
@@ -1281,15 +1356,16 @@ export class M365CoreServer {
           );
         }
       }
-    );    this.server.resource(
+    );    // User compliance resource - optimized
+    this.server.resource(
       'user_compliance',
       new ResourceTemplate('m365://users/{userId}/compliance', { list: undefined }),
       async (uri: URL, variables: any) => {
         try {
-          const client = this.getGraphClient();
-          const compliance = await client.api(`/deviceManagement/managedDevices`)
-            .filter(`userId eq '${variables?.userId}'`)
-            .get();
+          const compliance = await this.makeGraphApiCall('/deviceManagement/managedDevices', {
+            filter: `userId eq '${variables?.userId}'`,
+            select: ['id', 'deviceName', 'operatingSystem', 'complianceState', 'lastSyncDateTime', 'enrolledDateTime']
+          });
           
           return {
             contents: [
@@ -1303,29 +1379,39 @@ export class M365CoreServer {
         } catch (error) {
           throw new McpError(
             ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error reading user compliance: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       }
-    );    this.server.resource(
+    );    // Team governance resource - optimized with parallel calls
+    this.server.resource(
       'team_governance',
       new ResourceTemplate('m365://teams/{teamId}/governance', { list: undefined }),
       async (uri: URL, variables: any) => {
         try {
-          const client = this.getGraphClient();
-          const team = await client.api(`/teams/${variables?.teamId}`).get();
-          const members = await client.api(`/teams/${variables?.teamId}/members`).get();
-          const channels = await client.api(`/teams/${variables?.teamId}/channels`).get();
-          
-          const governance = {
+          // Make parallel API calls for better performance
+          const [team, members, channels] = await Promise.all([
+            this.makeGraphApiCall(`/teams/${variables?.teamId}`, {
+              select: ['id', 'displayName', 'memberSettings', 'guestSettings', 'funSettings', 'messagingSettings']
+            }),
+            this.makeGraphApiCall(`/teams/${variables?.teamId}/members`, {
+              select: ['id', 'displayName', 'email', 'roles'],
+              top: 100
+            }),
+            this.makeGraphApiCall(`/teams/${variables?.teamId}/channels`, {
+              select: ['id', 'displayName', 'description', 'membershipType'],
+              top: 50
+            })
+          ]);
+            const governance = {
             team,
             members,
             channels,
             governance: {
-              membershipType: team.memberSettings?.allowAddRemoveApps,
-              guestSettings: team.guestSettings,
-              funSettings: team.funSettings,
-              messagingSettings: team.messagingSettings
+              membershipType: (team as any)?.memberSettings?.allowAddRemoveApps,
+              guestSettings: (team as any)?.guestSettings,
+              funSettings: (team as any)?.funSettings,
+              messagingSettings: (team as any)?.messagingSettings
             }
           };
           
@@ -1400,19 +1486,133 @@ export class M365CoreServer {
   public notifyResourceChange(resourceUri: string, changeType: 'created' | 'updated' | 'deleted'): void {
     const notification = {
       type: 'resourceChange',
-      resourceUri,
-      changeType,
+      resourceUri,      changeType,
       timestamp: new Date().toISOString()
     };
     
     this.broadcastUpdate(notification);
   }
+
+  /**
+   * Modern Graph API wrapper with retry logic and authentication on demand
+   */
+  private async makeGraphApiCall<T>(
+    endpoint: string, 
+    options: {
+      method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+      body?: any;
+      select?: string[];
+      filter?: string;
+      expand?: string;
+      top?: number;
+      maxRetries?: number;
+    } = {}
+  ): Promise<T> {
+    const {
+      method = 'GET',
+      body,
+      select,
+      filter,
+      expand,
+      top,
+      maxRetries = 3
+    } = options;
+
+    // Ensure authentication before making API call
+    await this.ensureAuthenticated();
+
+    const client = this.getGraphClient();
+    let apiCall = client.api(endpoint);
+
+    // Add query parameters for optimization
+    if (select && select.length > 0) {
+      apiCall = apiCall.select(select.join(','));
+    }
+    if (filter) {
+      apiCall = apiCall.filter(filter);
+    }
+    if (expand) {
+      apiCall = apiCall.expand(expand);
+    }
+    if (top) {
+      apiCall = apiCall.top(top);
+    }
+
+    // Implement retry logic with exponential backoff
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        let result: T;
+        
+        switch (method) {
+          case 'GET':
+            result = await apiCall.get();
+            break;
+          case 'POST':
+            result = await apiCall.post(body);
+            break;
+          case 'PATCH':
+            result = await apiCall.patch(body);
+            break;
+          case 'DELETE':
+            result = await apiCall.delete();
+            break;
+          default:
+            throw new Error(`Unsupported HTTP method: ${method}`);
+        }
+
+        // Log successful API call
+        console.log(`✅ Graph API Success: ${method} ${endpoint} (attempt ${attempt + 1})`);
+        return result;
+
+      } catch (error: any) {
+        const isLastAttempt = attempt === maxRetries - 1;
+        
+        // Handle throttling (429) with retry-after
+        if (error.status === 429 && !isLastAttempt) {
+          const retryAfter = parseInt(error.headers?.['retry-after'] || '1');
+          const backoffDelay = Math.min(retryAfter * 1000, Math.pow(2, attempt) * 1000);
+          
+          console.warn(`⚠️ Graph API Throttled: ${method} ${endpoint}, retrying in ${backoffDelay}ms (attempt ${attempt + 1})`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        }
+        
+        // Handle other retryable errors (5xx)
+        if (error.status >= 500 && error.status < 600 && !isLastAttempt) {
+          const backoffDelay = Math.pow(2, attempt) * 1000;
+          console.warn(`⚠️ Graph API Server Error: ${method} ${endpoint}, retrying in ${backoffDelay}ms (attempt ${attempt + 1})`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        }        // Log and throw on final attempt or non-retryable errors
+        console.error(`❌ Graph API Error: ${method} ${endpoint}`, {
+          status: error.status,
+          message: error.message,
+          attempt: attempt + 1
+        });
+        
+        throw new McpError(
+          error.status >= 400 && error.status < 500 ? ErrorCode.InvalidParams : ErrorCode.InternalError,
+          `Graph API ${method} ${endpoint} failed: ${error.message} (Status: ${error.status})`
+        );
+      }
+    }    // This should never be reached due to the retry logic, but TypeScript requires it
+    throw new McpError(ErrorCode.InternalError, `Graph API ${method} ${endpoint} failed after ${maxRetries} attempts`);
+  }
+
+  // ...existing code...
 }
 
 // Start the server
 async function main() {
   try {
     const server = new M365CoreServer();
+    
+    // Register tools and resources (but don't authenticate yet - that happens on demand)
+    console.log('🔧 Registering tools and resources...');
+    await server.ensureToolsRegistered();
+    await server.ensureResourcesRegistered();
+    console.log('✅ Server initialized with lazy authentication');
+    
     const transport = process.env.NODE_ENV === 'http'
       ? new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID() // Added sessionIdGenerator
@@ -1421,6 +1621,7 @@ async function main() {
 
     await server.server.connect(transport);
     console.log(`M365 Core MCP Server running on ${process.env.NODE_ENV === 'http' ? `http://localhost:${PORT}` : 'stdio'}`);
+    console.log('🚀 Ready to serve requests with on-demand authentication');
   } catch (error) {
     console.error('Error starting M365 Core MCP Server:', error);
     process.exit(1);
