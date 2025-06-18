@@ -277,20 +277,25 @@ export class M365CoreServer {
           progressReporting: true,
           streamingResponses: true
         }
-      }
-    });    // Initialize lazy loading - tools and resources will be registered on first use
+      }    });
+
+    // Initialize lazy loading - register tools and resources immediately for discovery
+    // but authentication will still be lazy (only when tools are executed)
     this.setupLazyLoading();
+    this.setupTools(); // Register tools immediately for Smithery discovery
+    this.setupResources(); // Register resources immediately for Smithery discovery
+    this.toolsRegistered = true;
+    this.resourcesRegistered = true;
     
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
     });
   }
-
-  // Lazy loading setup - tools and resources are registered on first use
+  // Lazy loading setup - tools and resources are registered for discovery, auth is lazy
   private setupLazyLoading(): void {
-    console.log('🚀 Setting up lazy loading for M365 Core MCP Server');
-    console.log('   Tools and resources will be registered when first accessed');
+    console.log('🚀 Setting up lazy authentication for M365 Core MCP Server');
+    console.log('   Tools and resources registered immediately for discovery');
     console.log('   Authentication will occur only when tools are executed');
   }
 
@@ -1607,11 +1612,9 @@ async function main() {
   try {
     const server = new M365CoreServer();
     
-    // Register tools and resources (but don't authenticate yet - that happens on demand)
-    console.log('🔧 Registering tools and resources...');
-    await server.ensureToolsRegistered();
-    await server.ensureResourcesRegistered();
-    console.log('✅ Server initialized with lazy authentication');
+    // Tools and resources are already registered in constructor for Smithery discovery
+    // Authentication will happen on-demand when tools are executed
+    console.log('✅ Server initialized with tools registered and lazy authentication');
     
     const transport = process.env.NODE_ENV === 'http'
       ? new StreamableHTTPServerTransport({
