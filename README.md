@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/dynamicendpoints-m365-core-mcp-badge.png)](https://mseep.ai/app/dynamicendpoints-m365-core-mcp)
+
 ## Latest Enhancements (June 16, 2025)
 
 **Extended Resources and Prompts (40 Resources + 5 Comprehensive Prompts):**
