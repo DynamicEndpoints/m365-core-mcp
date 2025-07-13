@@ -1566,7 +1566,7 @@ export class M365CoreServer {
         }
 
         // Log successful API call
-        console.log(`✅ Graph API Success: ${method} ${endpoint} (attempt ${attempt + 1})`);
+        console.debug(`✅ Graph API Success: ${method} ${endpoint} (attempt ${attempt + 1})`);
         return result;
 
       } catch (error: any) {

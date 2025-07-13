@@ -606,7 +606,6 @@ export async function handleCallMicrosoftApi(
     batchSize = 100
   } = args;
 
-  console.log(`Executing enhanced Microsoft API call: apiType=${apiType}, path=${path}, method=${method}, maxRetries=${maxRetries}, timeout=${timeout}ms`);
   
   // Apply rate limiting if available
   if (rateLimiter) {
@@ -637,15 +636,12 @@ export async function handleCallMicrosoftApi(
   if (apiType === 'graph') {
     if (selectFields && selectFields.length > 0) {
       queryParams['$select'] = selectFields.join(',');
-      console.log(`Applied $select: ${queryParams['$select']}`);
     }
     if (expandFields && expandFields.length > 0) {
       queryParams['$expand'] = expandFields.join(',');
-      console.log(`Applied $expand: ${queryParams['$expand']}`);
     }
     if (fetchAll && batchSize !== 100) {
       queryParams['$top'] = batchSize.toString();
-      console.log(`Applied batch size: ${batchSize}`);
     }
   }
 
@@ -657,7 +653,7 @@ export async function handleCallMicrosoftApi(
       try {
         if (attempt > 0) {
           const delay = retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
-          console.log(`Retry attempt ${attempt}/${maxRetries}, waiting ${delay}ms`);
+          console.debug(`Retry attempt ${attempt}/${maxRetries}, waiting ${delay}ms`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         
@@ -704,7 +700,6 @@ export async function handleCallMicrosoftApi(
         // Add ConsistencyLevel header if provided
         if (consistencyLevel) {
           request = request.header('ConsistencyLevel', consistencyLevel);
-          console.log(`Added ConsistencyLevel header: ${consistencyLevel}`);
         }
           // Add custom headers
         Object.entries(customHeaders).forEach(([key, value]) => {
@@ -717,8 +712,6 @@ export async function handleCallMicrosoftApi(
         switch (method.toLowerCase()) {
           case 'get':
             if (fetchAll) {
-              console.log(`Fetching all pages for Graph path: ${path} with batch size: ${batchSize}`);
-              
               // Initialize with empty array for collecting all items
               let allItems: any[] = [];
               let nextLink: string | null | undefined = null;
@@ -739,7 +732,6 @@ export async function handleCallMicrosoftApi(
               
               // Fetch subsequent pages
               while (nextLink) {
-                console.log(`Fetching next page: ${nextLink}`);
                   // Create a new request for the next page
                 const nextPageResponse = await graphClient.api(nextLink).get();
                 
@@ -760,7 +752,6 @@ export async function handleCallMicrosoftApi(
                 fetchedAt: new Date().toISOString()
               };
             } else {
-              console.log(`Fetching single page for Graph path: ${path}`);
               return await request.get();
             }
           case 'post':
@@ -821,13 +812,13 @@ export async function handleCallMicrosoftApi(
         
         // --- Pagination Logic for Azure RM ---
         if (fetchAll && method.toLowerCase() === 'get') {
-          console.log(`Fetching all pages for Azure RM starting from: ${url}`);
+          console.debug(`Fetching all pages for Azure RM starting from: ${url}`);
           
           let allValues: any[] = [];
           let currentUrl: string | null = url;
           
           while (currentUrl) {
-            console.log(`Fetching Azure RM page: ${currentUrl}`);
+            console.debug(`Fetching Azure RM page: ${currentUrl}`);
             
             // Re-acquire token for each page (Azure tokens might expire)
             const currentPageToken = await getTokenWithCache("https://management.azure.com/.default");
@@ -871,7 +862,7 @@ export async function handleCallMicrosoftApi(
           };
         } else {
           // Single page fetch for Azure RM
-          console.log(`Fetching single page for Azure RM: ${url}`);
+          console.debug(`Fetching single page for Azure RM: ${url}`);
           
           const apiResponse = await fetch(url, requestOptions);
           const responseText = await apiResponse.text();

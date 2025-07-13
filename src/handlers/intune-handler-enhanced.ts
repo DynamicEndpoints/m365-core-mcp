@@ -50,7 +50,7 @@ export async function handleCreateIntunePolicyEnhanced(
       const template = platformTemplates[useTemplate as keyof typeof platformTemplates];
       if (template && 'settings' in template) {
         finalSettings = template.settings;
-        console.log(`Applied template: ${useTemplate} for ${platform} ${policyType}`);
+        console.debug(`Applied template: ${useTemplate} for ${platform} ${policyType}`);
       }
     } else {
       console.warn(`Template '${useTemplate}' not found for ${platform}`);
