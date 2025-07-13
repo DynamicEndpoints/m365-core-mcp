@@ -1,0 +1,13 @@
+{
+  "language": "typescript",
+  "frameworks": ["@microsoft/microsoft-graph-client", "express"],
+  "tests": "test-suite.mjs",
+  "docs": {
+    "overview": "README.md",
+    "gettingStarted": "README.md#getting-started"
+  },
+  "examples": [
+    "test-all-features.mjs",
+    "test-integration.mjs"
+  ]
+}
