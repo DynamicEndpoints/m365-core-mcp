@@ -1101,6 +1101,7 @@ export class M365CoreServer {
     // Audit Reports - Enhanced with lazy loading and better error handling
     this.server.tool(
       "generate_audit_reports",
+      "Generate comprehensive audit reports for compliance frameworks including evidence mapping, findings, and executive summaries in multiple formats",
       auditReportSchema.shape,
       wrapToolHandler(async (args: AuditReportArgs) => {
         await this.ensureAuthenticated();
