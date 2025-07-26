@@ -261,7 +261,7 @@ async function startServer() {
           'manage_azure_ad_apps',
           'manage_azure_ad_devices',
           'manage_service_principals',
-          'dynamicendpoints m365 assistant',
+          'dynamicendpoints_m365_assistant',
           'search_audit_log',
           'manage_alerts'
         ],

@@ -707,7 +707,7 @@ export class M365CoreServer {
         }
       })    );    // Microsoft API Call - Enhanced with performance and reliability features
     this.server.tool(
-      "dynamicendpoints m365 assistant",
+      "dynamicendpoints_m365_assistant",
       "Enhanced Microsoft Graph and Azure Resource Management API client with retry logic, rate limiting, field selection, and multiple response formats",
       callMicrosoftApiSchema.shape,
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
@@ -727,7 +727,7 @@ export class M365CoreServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error executing dynamicendpoints m365 assistant: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error executing dynamicendpoints_m365_assistant: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })
