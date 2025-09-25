@@ -6,12 +6,15 @@ import {
   IntuneWindowsAppArgs, 
   IntuneWindowsComplianceArgs 
 } from '../types/intune-types.js';
+import { createIntuneGraphClient, isIntuneEndpoint } from '../utils/modern-graph-client.js';
 
 // Intune Windows Device Management Handler
 export async function handleIntuneWindowsDevices(
   graphClient: Client,
   args: IntuneWindowsDeviceArgs
 ): Promise<{ content: { type: string; text: string }[] }> {
+  // Create Intune-specific client for proper authentication
+  const intuneClient = createIntuneGraphClient(graphClient);
   let apiPath = '';
   let result: any;
 
@@ -32,7 +35,7 @@ export async function handleIntuneWindowsDevices(
         apiPath += `?${queryOptions.join('')}`;
       }
 
-      result = await graphClient.api(apiPath).get();
+      result = (await intuneClient.makeApiCall(apiPath)).data;
       break;
 
     case 'get':
@@ -166,6 +169,8 @@ export async function handleIntuneWindowsPolicies(
   graphClient: Client,
   args: IntuneWindowsPolicyArgs
 ): Promise<{ content: { type: string; text: string }[] }> {
+  // Create Intune-specific client for proper authentication
+  const intuneClient = createIntuneGraphClient(graphClient);
   let apiPath = '';
   let result: any;
 

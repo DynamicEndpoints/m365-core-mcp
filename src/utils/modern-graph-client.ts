@@ -5,6 +5,8 @@ import { randomUUID } from 'crypto';
 /**
  * Modern Microsoft Graph API Utilities
  * Provides enhanced error handling, retry logic, and performance optimizations
+ * 
+ * Enhanced to support multiple resource endpoints for Intune-specific operations
  */
 
 export interface GraphApiOptions {
@@ -32,14 +34,28 @@ export interface GraphApiResponse<T = any> {
 export class ModernGraphClient {
   private client: Client;
   private defaultHeaders: Record<string, string>;
+  private resource: string;
 
-  constructor(client: Client) {
+  /**
+   * Create a new ModernGraphClient instance
+   * @param client - The Microsoft Graph client instance
+   * @param resource - The resource endpoint (default: 'https://graph.microsoft.com')
+   */
+  constructor(client: Client, resource: string = 'https://graph.microsoft.com') {
     this.client = client;
+    this.resource = resource;
     this.defaultHeaders = {
       'User-Agent': 'M365-Core-MCP/1.0',
       'Prefer': 'return=minimal', // Optimize response size
       'Content-Type': 'application/json'
     };
+  }
+
+  /**
+   * Get the resource endpoint for this client
+   */
+  getResource(): string {
+    return this.resource;
   }
 
   /**
@@ -66,8 +82,12 @@ export class ModernGraphClient {
     const requestHeaders = {
       ...this.defaultHeaders,
       'client-request-id': requestId,
+      'x-ms-client-resource': this.resource,
       ...headers
     };
+
+    // Log resource usage for debugging
+    console.log(`📡 Request to ${endpoint} using resource: ${this.resource}`);
 
     let apiCall = this.client.api(endpoint);
 
@@ -346,5 +366,36 @@ export const GraphQueries = {
     teams: ['id', 'displayName', 'resourceProvisioningOptions', 'visibility']
   }
 };
+
+/**
+ * Utility functions for Intune-specific operations
+ */
+
+/**
+ * Check if an endpoint requires Intune-specific authentication
+ */
+export function isIntuneEndpoint(endpoint: string): boolean {
+  const intunePatterns = [
+    '/deviceManagement/',
+    '/deviceAppManagement/',
+    '/informationProtection/bitlocker/'
+  ];
+  
+  return intunePatterns.some(pattern => endpoint.includes(pattern));
+}
+
+/**
+ * Create an Intune-specific Graph client with the correct resource
+ */
+export function createIntuneGraphClient(baseClient: Client): ModernGraphClient {
+  return new ModernGraphClient(baseClient, 'https://manage.microsoft.com');
+}
+
+/**
+ * Create a standard Graph client
+ */
+export function createStandardGraphClient(baseClient: Client): ModernGraphClient {
+  return new ModernGraphClient(baseClient, 'https://graph.microsoft.com');
+}
 
 export default ModernGraphClient;
