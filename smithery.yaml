@@ -103,7 +103,7 @@ tools:
     category: Azure AD
     tags: [service-principals, applications, azure-ad, automation]
 
-  - name: dynamicendpoints m365 assistant
+  - name: call_microsoft_api
     description: Dynamic API endpoint for calling any Microsoft Graph or Azure Resource Management API
     category: API Access
     tags: [graph-api, azure-api, dynamic, automation]
@@ -161,22 +161,22 @@ tools:
     category: Security & Compliance
     tags: [compliance, frameworks, governance, risk-management]
 
-  - name: run_compliance_assessments
+  - name: manage_compliance_assessments
     description: Execute compliance assessments against various frameworks and standards
     category: Security & Compliance
     tags: [compliance, assessment, auditing, frameworks]
 
-  - name: monitor_compliance_status
+  - name: manage_compliance_monitoring
     description: Monitor ongoing compliance status and receive alerts for compliance drift
     category: Security & Compliance
     tags: [compliance, monitoring, alerts, status]
 
-  - name: collect_evidence
+  - name: manage_evidence_collection
     description: Automated evidence collection for compliance and audit purposes
     category: Security & Compliance
     tags: [evidence, compliance, auditing, documentation]
 
-  - name: analyze_compliance_gaps
+  - name: manage_gap_analysis
     description: Perform gap analysis against compliance frameworks and standards
     category: Security & Compliance
     tags: [gap-analysis, compliance, assessment, frameworks]
@@ -186,7 +186,7 @@ tools:
     category: Security & Compliance
     tags: [audit-reports, compliance, documentation, reporting]
 
-  - name: assess_cis_compliance
+  - name: manage_cis_compliance
     description: Assess CIS (Center for Internet Security) benchmark compliance across systems
     category: Security & Compliance
     tags: [cis, benchmarks, security, compliance, assessment]
