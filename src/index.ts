@@ -144,6 +144,16 @@ async function startServer() {
       // Handle POST requests for client-to-server communication
       app.post('/mcp', async (req: Request, res: Response) => {
         try {
+          // Parse configuration from Smithery HTTP context for every request
+          const config = parseConfigFromRequest(req);
+          
+          // Set environment variables from config for this request
+          if (config.msTenantId) process.env.MS_TENANT_ID = config.msTenantId;
+          if (config.msClientId) process.env.MS_CLIENT_ID = config.msClientId;
+          if (config.msClientSecret) process.env.MS_CLIENT_SECRET = config.msClientSecret;
+          if (config.logLevel) process.env.LOG_LEVEL = config.logLevel;
+          if (config.stateless !== undefined) process.env.STATELESS = config.stateless.toString();
+          
           // Check for existing session ID
           const sessionId = req.headers['mcp-session-id'] as string | undefined;
           let transport: StreamableHTTPServerTransport;
