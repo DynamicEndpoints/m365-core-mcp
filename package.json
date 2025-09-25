@@ -7,7 +7,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
+    "start:http": "USE_HTTP=true node build/index.js",
+    "start:stdio": "node build/index.js",
     "dev": "ts-node-esm src/index.ts",
+    "dev:http": "USE_HTTP=true ts-node-esm src/index.ts",
+    "dev:stateless": "USE_HTTP=true STATELESS=true ts-node-esm src/index.ts",
+    "test:http": "USE_HTTP=true PORT=8080 ts-node-esm src/index.ts",
     "lint": "eslint src/**/*.ts",
     "test": "jest"
   },

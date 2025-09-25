@@ -1,9 +1,14 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+# Use container runtime for HTTP transport
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+
 startCommand:
-  type: stdio
+  type: "http"
   configSchema:
-    # JSON Schema defining the configuration options for the MCP.
     type: object
     required:
       - msTenantId
@@ -19,34 +24,21 @@ startCommand:
       msClientSecret:
         type: string
         description: Microsoft Client Secret for authentication
-      useHttp:
-        type: boolean
-        description: Use HTTP transport instead of stdio (default false)
       stateless:
         type: boolean
         description: Use stateless HTTP mode (default false)
-      port:
-        type: integer
-        description: Port for HTTP server (default 3000)      logLevel:
+        default: false
+      logLevel:
         type: string
         enum: ["debug", "info", "warn", "error"]
         description: Log level (default info)
-  commandFunction:
-    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
-    |-
-    (config) => ({
-      command: 'node',
-      args: ['build/index.js'],
-      env: {
-        MS_TENANT_ID: config.msTenantId,
-        MS_CLIENT_ID: config.msClientId,
-        MS_CLIENT_SECRET: config.msClientSecret,
-        USE_HTTP: config.useHttp?.toString() || 'false',
-        STATELESS: config.stateless?.toString() || 'false',
-        PORT: config.port?.toString() || '3000',
-        LOG_LEVEL: config.logLevel || 'info'
-      }
-    })
+        default: "info"
+  exampleConfig:
+    msTenantId: "your-tenant-id-here"
+    msClientId: "your-client-id-here"
+    msClientSecret: "your-client-secret-here"
+    stateless: false
+    logLevel: "info"
 
 # Tool discovery metadata for Smithery
 tools:

@@ -13,8 +13,12 @@ COPY . .
 # Build the project
 RUN npm run build
 
-# Expose standard port if needed (optional)
-# EXPOSE 3000
+# Set environment variables for HTTP transport
+ENV USE_HTTP=true
+ENV PORT=8081
 
-# Start the MCP server
+# Expose port 8081 (Smithery standard)
+EXPOSE 8081
+
+# Start the MCP server in HTTP mode
 CMD ["npm", "start"]

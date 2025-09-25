@@ -12,12 +12,66 @@ const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const USE_HTTP = process.env.USE_HTTP === 'true';
 const STATELESS = process.env.STATELESS === 'true';
 
+// Configuration parsing for HTTP requests (Smithery integration)
+interface M365Config {
+  msTenantId?: string;
+  msClientId?: string;
+  msClientSecret?: string;
+  stateless?: boolean;
+  logLevel?: string;
+}
+
+function parseConfigFromRequest(req: Request): M365Config {
+  const config: M365Config = {};
+  
+  // Parse from query parameters (Smithery passes config this way)
+  if (req.query.msTenantId) config.msTenantId = req.query.msTenantId as string;
+  if (req.query.msClientId) config.msClientId = req.query.msClientId as string;
+  if (req.query.msClientSecret) config.msClientSecret = req.query.msClientSecret as string;
+  if (req.query.stateless) config.stateless = req.query.stateless === 'true';
+  if (req.query.logLevel) config.logLevel = req.query.logLevel as string;
+  
+  // Parse from headers (alternative method)
+  if (req.headers['x-ms-tenant-id']) config.msTenantId = req.headers['x-ms-tenant-id'] as string;
+  if (req.headers['x-ms-client-id']) config.msClientId = req.headers['x-ms-client-id'] as string;
+  if (req.headers['x-ms-client-secret']) config.msClientSecret = req.headers['x-ms-client-secret'] as string;
+  if (req.headers['x-stateless']) config.stateless = req.headers['x-stateless'] === 'true';
+  if (req.headers['x-log-level']) config.logLevel = req.headers['x-log-level'] as string;
+  
+  // Parse from request body if it contains config
+  if (req.body && typeof req.body === 'object' && req.body.config) {
+    const bodyConfig = req.body.config;
+    if (bodyConfig.msTenantId) config.msTenantId = bodyConfig.msTenantId;
+    if (bodyConfig.msClientId) config.msClientId = bodyConfig.msClientId;
+    if (bodyConfig.msClientSecret) config.msClientSecret = bodyConfig.msClientSecret;
+    if (bodyConfig.stateless !== undefined) config.stateless = bodyConfig.stateless;
+    if (bodyConfig.logLevel) config.logLevel = bodyConfig.logLevel;
+  }
+  
+  return config;
+}
+
 async function startServer() {
   const server = new M365CoreServer();
 
   if (USE_HTTP) {
     // Setup Express app for HTTP transport
     const app = express();
+    
+    // CORS configuration for browser-based MCP clients
+    app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version');
+      res.header('Access-Control-Expose-Headers', 'mcp-session-id, mcp-protocol-version');
+      
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+        return;
+      }
+      next();
+    });
+    
     app.use(express.json());
 
     if (STATELESS) {
@@ -26,6 +80,16 @@ async function startServer() {
       
       app.post('/mcp', async (req: Request, res: Response) => {
         try {
+          // Parse configuration from Smithery HTTP context
+          const config = parseConfigFromRequest(req);
+          
+          // Set environment variables from config for this request
+          if (config.msTenantId) process.env.MS_TENANT_ID = config.msTenantId;
+          if (config.msClientId) process.env.MS_CLIENT_ID = config.msClientId;
+          if (config.msClientSecret) process.env.MS_CLIENT_SECRET = config.msClientSecret;
+          if (config.logLevel) process.env.LOG_LEVEL = config.logLevel;
+          if (config.stateless !== undefined) process.env.STATELESS = config.stateless.toString();
+          
           // In stateless mode, create a new instance of transport and server for each request
           const mcpServer = new M365CoreServer();
           const transport = new StreamableHTTPServerTransport({
