@@ -1,6 +1,49 @@
 ## Latest Enhancements (September 25, 2025)
 
-**HTTP Transport Migration Complete:**
+**Universal Microsoft Graph API Framework - Complete Transformation:**
+- **Transformed from specialized tool to universal Graph API gateway** with access to 1000+ Microsoft Graph endpoints
+- **Dynamic Tool Generation System**: Automatically discovers and creates tools for all Graph API endpoints at runtime
+- **Advanced Graph API Features**: Batch operations, delta queries, webhook subscriptions, and advanced search
+- **Comprehensive Service Coverage**: Teams, OneNote, Planner, To Do, Bookings, Security, Analytics, and more
+- **Enhanced Authentication**: Multi-scope token caching with automatic scope detection for all Graph categories
+- **Real-time Capabilities**: Webhook subscriptions for live change notifications across all Microsoft 365 services
+
+**New Advanced Graph API Tools:**
+- `execute_graph_batch` - Execute up to 20 Graph requests in a single high-performance batch operation
+- `execute_delta_query` - Efficiently track changes to any Graph resource using delta queries
+- `manage_graph_subscriptions` - Create, update, delete, and list webhook subscriptions for real-time notifications
+- `execute_graph_search` - Advanced search across Microsoft 365 content with aggregations and filtering
+
+**Dynamic Category Tools (Generated at Runtime):**
+- `manage_teams_resources` - Complete Microsoft Teams management (teams, channels, messages, meetings, chat)
+- `manage_productivity_resources` - OneNote notebooks/pages, Planner plans/tasks, To Do lists, Bookings appointments
+- `manage_security_resources` - Security incidents, threat intelligence, advanced alerts, Defender integration
+- `manage_analytics_resources` - Usage reports, activity insights, trending documents, user analytics
+
+**Enhanced Windows Device Management:**
+- `manage_intune_windows_devices` - Complete Windows device lifecycle management in Intune
+- `manage_intune_windows_policies` - Windows configuration and compliance policy management
+- `manage_intune_windows_apps` - Windows application deployment and management
+- `manage_intune_windows_compliance` - Windows device compliance assessment and reporting
+
+**Technical Architecture Improvements:**
+- **GraphMetadataService**: Auto-discovers Graph endpoints and generates schemas dynamically
+- **DynamicToolGenerator**: Creates tools at runtime based on Graph API metadata
+- **GraphAdvancedFeatures**: Implements batch operations, webhooks, delta queries, and search
+- **Enhanced Error Handling**: Intelligent troubleshooting with Graph-specific error interpretation
+- **Performance Optimizations**: Token caching, batch operations, pagination, and retry logic
+- **Smithery Integration**: All 40+ tools properly configured for Smithery discovery
+
+**Scope Coverage Expansion:**
+- **Microsoft Teams**: Team.ReadBasic.All, Channel.Create, ChannelMessage.Send, OnlineMeetings.ReadWrite
+- **Productivity Apps**: Notes.ReadWrite, Tasks.ReadWrite, Bookings.ReadWrite.All
+- **Advanced Security**: SecurityIncident.ReadWrite.All, ThreatIntelligence.Read.All
+- **Analytics & Reports**: Reports.Read.All, Sites.Read.All for insights and trending data
+- **Power Platform**: Power BI API integration for datasets, reports, and dashboards
+
+This transformation makes the M365 MCP server the **definitive solution for Microsoft 365 automation**, providing unprecedented access to the entire Microsoft Graph API ecosystem with advanced features and optimal performance.
+
+**Previous HTTP Transport Migration (September 25, 2025):**
 - Migrated M365 Core MCP Server from STDIO to HTTP transport
 - Added Express.js HTTP server with `/mcp` endpoint
 - Implemented CORS configuration for browser compatibility
@@ -12,8 +55,6 @@
 - Maintained backward compatibility with STDIO transport
 - Added support for both stateless and stateful HTTP modes
 - Added health and capabilities endpoints for monitoring
-
-This migration enables deployment to modern platforms like Smithery while preserving all existing M365 management functionality.
 
 ## Previous Enhancements (June 16, 2025)
 
