@@ -1,4 +1,21 @@
-## Latest Enhancements (June 16, 2025)
+## Latest Enhancements (September 25, 2025)
+
+**HTTP Transport Migration Complete:**
+- Migrated M365 Core MCP Server from STDIO to HTTP transport
+- Added Express.js HTTP server with `/mcp` endpoint
+- Implemented CORS configuration for browser compatibility
+- Added configuration parsing from HTTP requests (Smithery integration)
+- Updated Dockerfile for HTTP container deployment (port 8081)
+- Updated smithery.yaml to use container runtime with HTTP transport
+- Added HTTP development and testing scripts
+- Created comprehensive HTTP transport test suite
+- Maintained backward compatibility with STDIO transport
+- Added support for both stateless and stateful HTTP modes
+- Added health and capabilities endpoints for monitoring
+
+This migration enables deployment to modern platforms like Smithery while preserving all existing M365 management functionality.
+
+## Previous Enhancements (June 16, 2025)
 
 **Extended Resources and Prompts (40 Resources + 5 Comprehensive Prompts):**
 - Added 40 additional Microsoft 365 resources covering security, compliance, device management, and collaboration
