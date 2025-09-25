@@ -386,9 +386,10 @@ export function isIntuneEndpoint(endpoint: string): boolean {
 
 /**
  * Create an Intune-specific Graph client with the correct resource
+ * Note: All Intune operations now use the standard Graph API endpoint
  */
 export function createIntuneGraphClient(baseClient: Client): ModernGraphClient {
-  return new ModernGraphClient(baseClient, 'https://manage.microsoft.com');
+  return new ModernGraphClient(baseClient, 'https://graph.microsoft.com');
 }
 
 /**

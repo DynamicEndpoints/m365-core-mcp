@@ -90,7 +90,7 @@ export interface ExchangeSettingsArgs {
 
 // SharePoint Site Types
 export interface SharePointSiteArgs {
-  action: 'get' | 'create' | 'update' | 'delete' | 'add_users' | 'remove_users';
+  action: 'get' | 'list' | 'search' | 'create' | 'update' | 'delete' | 'add_users' | 'remove_users' | 'get_permissions' | 'get_drives' | 'get_subsites';
   siteId?: string;
   url?: string;
   title?: string;

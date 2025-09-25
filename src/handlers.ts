@@ -141,113 +141,110 @@ export async function handleSharePointSite(
 ): Promise<{ content: { type: string; text: string }[] }> {
   switch (args.action) {
     case 'get': {
-      const site = await graphClient
-        .api(`/sites/${args.siteId}`)
+      let apiPath = '';
+      
+      if (args.siteId) {
+        // Get specific site by ID
+        apiPath = `/sites/${args.siteId}`;
+      } else if (args.url) {
+        // Get site by URL (hostname:path format)
+        const urlParts = args.url.replace('https://', '').split('/');
+        const hostname = urlParts[0];
+        const sitePath = urlParts.slice(1).join('/') || 'sites/root';
+        apiPath = `/sites/${hostname}:/${sitePath}`;
+      } else {
+        throw new McpError(ErrorCode.InvalidParams, 'Either siteId or url is required for get action');
+      }
+      
+      const site = await graphClient.api(apiPath).get();
+      return { content: [{ type: 'text', text: JSON.stringify(site, null, 2) }] };
+    }
+    
+    case 'list': {
+      // List all sites in the organization
+      const sites = await graphClient
+        .api('/sites?search=*')
         .get();
-      return { content: [{ type: 'text', text: JSON.stringify(site, null, 2) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(sites, null, 2) }] };
     }
+    
+    case 'search': {
+      if (!args.title) {
+        throw new McpError(ErrorCode.InvalidParams, 'title (search query) is required for search action');
+      }
+      
+      const sites = await graphClient
+        .api(`/sites?search=${encodeURIComponent(args.title)}`)
+        .get();
+      return { content: [{ type: 'text', text: JSON.stringify(sites, null, 2) }] };
+    }
+    
     case 'create': {
-      // Create a new SharePoint site
-      const site = await graphClient
-        .api('/sites/add')
-        .post({
-          displayName: args.title,
-          description: args.description,
-          webTemplate: args.template || 'STS#0', // Team site template
-          url: args.url,
-        });
-      
-      // Apply settings if provided
-      if (args.settings) {
-        await graphClient
-          .api(`/sites/${site.id}/settings`)
-          .patch({
-            isPublic: args.settings.isPublic,
-            sharingCapability: args.settings.allowSharing ? 'ExternalUserSharingOnly' : 'Disabled',
-            storageQuota: args.settings.storageQuota,
-          });
-      }
-      
-      // Add owners if provided
-      if (args.owners?.length) {
-        for (const owner of args.owners) {
-          await graphClient
-            .api(`/sites/${site.id}/owners/$ref`)
-            .post({
-              '@odata.id': `https://graph.microsoft.com/v1.0/users/${owner}`,
-            });
-        }
-      }
-      
-      // Add members if provided
-      if (args.members?.length) {
-        for (const member of args.members) {
-          await graphClient
-            .api(`/sites/${site.id}/members/$ref`)
-            .post({
-              '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`,
-            });
-        }
-      }
-      
-      return { content: [{ type: 'text', text: JSON.stringify(site, null, 2) }] };
+      // Note: Direct site creation via Graph API is limited
+      // This creates a communication site via SharePoint REST API
+      throw new McpError(
+        ErrorCode.InvalidParams, 
+        'Direct site creation is not supported via Graph API. Use SharePoint admin center or PowerShell for site creation. You can use the "get" action to retrieve existing sites.'
+      );
     }
+    
     case 'update': {
-      // Update site properties
-      await graphClient
-        .api(`/sites/${args.siteId}`)
-        .patch({
-          displayName: args.title,
-          description: args.description,
-        });
-      
-      // Update settings if provided
-      if (args.settings) {
-        await graphClient
-          .api(`/sites/${args.siteId}/settings`)
-          .patch({
-            isPublic: args.settings.isPublic,
-            sharingCapability: args.settings.allowSharing ? 'ExternalUserSharingOnly' : 'Disabled',
-            storageQuota: args.settings.storageQuota,
-          });
+      if (!args.siteId) {
+        throw new McpError(ErrorCode.InvalidParams, 'siteId is required for update action');
       }
       
-      return { content: [{ type: 'text', text: 'SharePoint site updated successfully' }] };
+      const updatePayload: any = {};
+      if (args.title) updatePayload.displayName = args.title;
+      if (args.description) updatePayload.description = args.description;
+      
+      // Update site properties (limited to displayName and description)
+      const result = await graphClient
+        .api(`/sites/${args.siteId}`)
+        .patch(updatePayload);
+      
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     }
+    
     case 'delete': {
-      await graphClient
-        .api(`/sites/${args.siteId}`)
-        .delete();
-      return { content: [{ type: 'text', text: 'SharePoint site deleted successfully' }] };
+      throw new McpError(
+        ErrorCode.InvalidParams, 
+        'Site deletion is not supported via Graph API. Use SharePoint admin center or PowerShell for site deletion.'
+      );
     }
-    case 'add_users': {
-      if (!args.members?.length) {
-        throw new McpError(ErrorCode.InvalidParams, 'No users specified to add');
+    
+    case 'get_permissions': {
+      if (!args.siteId) {
+        throw new McpError(ErrorCode.InvalidParams, 'siteId is required for get_permissions action');
       }
       
-      for (const member of args.members) {
-        await graphClient
-          .api(`/sites/${args.siteId}/members/$ref`)
-          .post({
-            '@odata.id': `https://graph.microsoft.com/v1.0/users/${member}`,
-          });
-      }
-      
-      return { content: [{ type: 'text', text: 'Users added to SharePoint site successfully' }] };
+      const permissions = await graphClient
+        .api(`/sites/${args.siteId}/permissions`)
+        .get();
+      return { content: [{ type: 'text', text: JSON.stringify(permissions, null, 2) }] };
     }
-    case 'remove_users': {
-      if (!args.members?.length) {
-        throw new McpError(ErrorCode.InvalidParams, 'No users specified to remove');
+    
+    case 'get_drives': {
+      if (!args.siteId) {
+        throw new McpError(ErrorCode.InvalidParams, 'siteId is required for get_drives action');
       }
       
-      for (const member of args.members) {
-        await graphClient
-          .api(`/sites/${args.siteId}/members/${member}/$ref`)
-          .delete();
-      }
-      
-      return { content: [{ type: 'text', text: 'Users removed from SharePoint site successfully' }] };
+      const drives = await graphClient
+        .api(`/sites/${args.siteId}/drives`)
+        .get();
+      return { content: [{ type: 'text', text: JSON.stringify(drives, null, 2) }] };
     }
+    
+    case 'get_subsites': {
+      if (!args.siteId) {
+        throw new McpError(ErrorCode.InvalidParams, 'siteId is required for get_subsites action');
+      }
+      
+      const subsites = await graphClient
+        .api(`/sites/${args.siteId}/sites`)
+        .get();
+      return { content: [{ type: 'text', text: JSON.stringify(subsites, null, 2) }] };
+    }
+    
     default:
       throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
   }
