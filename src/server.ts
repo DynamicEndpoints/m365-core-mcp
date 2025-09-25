@@ -10,6 +10,11 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
+// Import new Graph API framework components
+import { DynamicToolGenerator } from './utils/dynamic-tool-generator.js';
+import { GraphAdvancedFeatures, batchRequestSchema, deltaQuerySchema, webhookSubscriptionSchema, searchQuerySchema } from './utils/graph-advanced-features.js';
+import { GraphMetadataService, GraphScopeManager } from './utils/graph-metadata-service.js';
+
 // Import Azure Identity library (commented out due to package installation issues)
 // import { ClientSecretCredential } from '@azure/identity';
 // import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
@@ -936,6 +941,157 @@ export class M365CoreServer {
         }
       })
     );
+
+    // Advanced Graph API Features
+    this.setupAdvancedGraphTools();
+    
+    // Dynamic tool generation (async - will generate tools in background)
+    this.setupDynamicTools();
+  }
+
+  // Setup advanced Graph API tools
+  private setupAdvancedGraphTools(): void {
+    // Batch Operations
+    this.server.tool(
+      "execute_graph_batch",
+      batchRequestSchema.shape,
+      wrapToolHandler(async (args: any) => {
+        this.validateCredentials();
+        try {
+          const advancedFeatures = new GraphAdvancedFeatures(this.getGraphClient(), this.getAccessToken.bind(this));
+          const result = await advancedFeatures.executeBatch(args.requests);
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing batch operation: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Delta Queries
+    this.server.tool(
+      "execute_delta_query",
+      deltaQuerySchema.shape,
+      wrapToolHandler(async (args: any) => {
+        this.validateCredentials();
+        try {
+          const advancedFeatures = new GraphAdvancedFeatures(this.getGraphClient(), this.getAccessToken.bind(this));
+          const result = await advancedFeatures.executeDeltaQuery(args.resource, args.deltaToken);
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing delta query: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Webhook Subscriptions
+    this.server.tool(
+      "manage_graph_subscriptions",
+      z.object({
+        action: z.enum(['create', 'update', 'delete', 'list']).describe('Subscription management action'),
+        subscriptionId: z.string().optional().describe('Subscription ID for update/delete operations'),
+        subscription: webhookSubscriptionSchema.optional().describe('Subscription details for create/update'),
+        updates: webhookSubscriptionSchema.partial().optional().describe('Updates for existing subscription')
+      }).shape,
+      wrapToolHandler(async (args: any) => {
+        this.validateCredentials();
+        try {
+          const advancedFeatures = new GraphAdvancedFeatures(this.getGraphClient(), this.getAccessToken.bind(this));
+          let result: any;
+
+          switch (args.action) {
+            case 'create':
+              if (!args.subscription) {
+                throw new McpError(ErrorCode.InvalidParams, 'Subscription details required for create action');
+              }
+              result = await advancedFeatures.createSubscription(args.subscription);
+              break;
+            case 'update':
+              if (!args.subscriptionId || !args.updates) {
+                throw new McpError(ErrorCode.InvalidParams, 'Subscription ID and updates required for update action');
+              }
+              result = await advancedFeatures.updateSubscription(args.subscriptionId, args.updates);
+              break;
+            case 'delete':
+              if (!args.subscriptionId) {
+                throw new McpError(ErrorCode.InvalidParams, 'Subscription ID required for delete action');
+              }
+              result = await advancedFeatures.deleteSubscription(args.subscriptionId);
+              break;
+            case 'list':
+              result = await advancedFeatures.listSubscriptions();
+              break;
+            default:
+              throw new McpError(ErrorCode.InvalidParams, `Invalid action: ${args.action}`);
+          }
+
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error managing subscriptions: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Advanced Search
+    this.server.tool(
+      "execute_graph_search",
+      searchQuerySchema.shape,
+      wrapToolHandler(async (args: any) => {
+        this.validateCredentials();
+        try {
+          const advancedFeatures = new GraphAdvancedFeatures(this.getGraphClient(), this.getAccessToken.bind(this));
+          const result = await advancedFeatures.executeSearch(args);
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing search: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+  }
+
+  // Setup dynamic tools (async background process)
+  private setupDynamicTools(): void {
+    // Generate dynamic tools in the background after server initialization
+    setTimeout(async () => {
+      try {
+        console.log('🚀 Initializing dynamic Graph API tool generation...');
+        const dynamicGenerator = new DynamicToolGenerator(
+          this.server,
+          this.getGraphClient(),
+          this.getAccessToken.bind(this),
+          this.validateCredentials.bind(this)
+        );
+        
+        await dynamicGenerator.generateAllTools();
+        console.log('✅ Dynamic Graph API tools initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize dynamic tools:', error);
+        // Don't throw - this is a background process
+      }
+    }, 1000); // Delay to allow server to fully initialize
   }
   
   private setupResources(): void {

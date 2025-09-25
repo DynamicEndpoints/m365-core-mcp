@@ -191,6 +191,69 @@ tools:
     category: Security & Compliance
     tags: [cis, benchmarks, security, compliance, assessment]
 
+  # Intune Windows Management Tools
+  - name: manage_intune_windows_devices
+    description: Manage Windows devices in Microsoft Intune - enrollment, compliance, and device actions
+    category: Device Management
+    tags: [intune, windows, device-management, mdm]
+
+  - name: manage_intune_windows_policies
+    description: Manage Windows configuration and compliance policies in Intune
+    category: Device Management
+    tags: [intune, windows, policies, configuration, compliance]
+
+  - name: manage_intune_windows_apps
+    description: Manage Windows application deployment and management through Intune
+    category: Device Management
+    tags: [intune, windows, applications, app-deployment]
+
+  - name: manage_intune_windows_compliance
+    description: Assess and manage Windows device compliance with organizational policies
+    category: Device Management
+    tags: [intune, windows, compliance, assessment, reporting]
+
+  # Advanced Graph API Tools
+  - name: execute_graph_batch
+    description: Execute multiple Graph API requests in a single batch operation for improved performance
+    category: Advanced API
+    tags: [graph-api, batch, performance, automation]
+
+  - name: execute_delta_query
+    description: Efficiently track changes to Graph resources using delta queries
+    category: Advanced API
+    tags: [graph-api, delta-query, change-tracking, synchronization]
+
+  - name: manage_graph_subscriptions
+    description: Manage Graph API webhook subscriptions for real-time change notifications
+    category: Advanced API
+    tags: [graph-api, webhooks, subscriptions, real-time, notifications]
+
+  - name: execute_graph_search
+    description: Execute advanced search queries across Microsoft 365 content using Graph Search API
+    category: Advanced API
+    tags: [graph-api, search, content-discovery, advanced-queries]
+
+  # Dynamic Graph API Tools (Generated at Runtime)
+  - name: manage_teams_resources
+    description: Dynamically manage Microsoft Teams resources - teams, channels, messages, meetings
+    category: Microsoft Teams
+    tags: [teams, collaboration, channels, meetings, dynamic]
+
+  - name: manage_productivity_resources
+    description: Dynamically manage productivity resources - OneNote, Planner, To Do, Bookings
+    category: Productivity
+    tags: [onenote, planner, todo, bookings, productivity, dynamic]
+
+  - name: manage_security_resources
+    description: Dynamically manage advanced security resources - incidents, threat intelligence
+    category: Advanced Security
+    tags: [security, incidents, threat-intelligence, defender, dynamic]
+
+  - name: manage_analytics_resources
+    description: Dynamically manage analytics and reporting resources - usage reports, insights
+    category: Analytics & Reporting
+    tags: [analytics, reports, insights, usage, dynamic]
+
 # Resource discovery metadata
 resources:
   - name: current_user
