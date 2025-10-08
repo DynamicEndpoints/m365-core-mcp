@@ -7,6 +7,14 @@ import {
   IntuneWindowsComplianceArgs 
 } from '../types/intune-types.js';
 import { createIntuneGraphClient, isIntuneEndpoint } from '../utils/modern-graph-client.js';
+import {
+  SETTINGS_CATALOG_POLICY_TEMPLATES,
+  PPC_POLICY_TEMPLATES,
+  validateSettingsCatalogPolicy,
+  validatePPCPolicy,
+  SettingsCatalogPolicy,
+  PPCPolicyConfig
+} from './intune-policy-templates.js';
 
 // Intune Windows Device Management Handler
 export async function handleIntuneWindowsDevices(
@@ -382,6 +390,147 @@ export async function handleIntuneWindowsPolicies(
         policyId: args.policyId,
         assignmentCount: assignments.value ? assignments.value.length : 0,
         deploymentSettings: args.deploymentSettings
+      };
+      break;
+
+    case 'create_settings_catalog':
+      // Create a Settings Catalog policy from template
+      if (!args.settingsCatalogTemplate) {
+        throw new McpError(ErrorCode.InvalidParams, 'settingsCatalogTemplate is required for create_settings_catalog action');
+      }
+
+      let catalogPolicy: SettingsCatalogPolicy;
+
+      // Check if using a pre-built template
+      if (args.settingsCatalogTemplate in SETTINGS_CATALOG_POLICY_TEMPLATES) {
+        const templateName = args.settingsCatalogTemplate as keyof typeof SETTINGS_CATALOG_POLICY_TEMPLATES;
+        const templateFunc = SETTINGS_CATALOG_POLICY_TEMPLATES[templateName];
+        
+        // Some templates accept parameters
+        if (templateName === 'WINDOWS_UPDATE' && args.settingsCatalogParams) {
+          const { deferQualityDays, deferFeatureDays } = args.settingsCatalogParams;
+          catalogPolicy = templateFunc(deferQualityDays, deferFeatureDays);
+        } else if (templateName === 'PASSWORD_POLICY' && args.settingsCatalogParams) {
+          const { minLength, complexity } = args.settingsCatalogParams;
+          catalogPolicy = templateFunc(minLength, complexity);
+        } else {
+          catalogPolicy = templateFunc();
+        }
+      } else if (args.customSettingsCatalogPolicy) {
+        // Use custom policy definition
+        catalogPolicy = args.customSettingsCatalogPolicy;
+      } else {
+        throw new McpError(ErrorCode.InvalidParams, 'Invalid settingsCatalogTemplate or customSettingsCatalogPolicy required');
+      }
+
+      // Override name and description if provided
+      if (args.name) catalogPolicy.name = args.name;
+      if (args.description) catalogPolicy.description = args.description;
+
+      // Validate policy structure
+      const validation = validateSettingsCatalogPolicy(catalogPolicy);
+      if (!validation.valid) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Invalid Settings Catalog policy: ${validation.errors.join(', ')}`
+        );
+      }
+
+      // Create the policy using Graph API
+      apiPath = '/deviceManagement/configurationPolicies';
+      const catalogPayload = {
+        name: catalogPolicy.name,
+        description: catalogPolicy.description || '',
+        platforms: catalogPolicy.platforms,
+        technologies: catalogPolicy.technologies,
+        settings: catalogPolicy.settings,
+        templateReference: catalogPolicy.templateReference
+      };
+
+      result = await graphClient.api(apiPath).post(catalogPayload);
+      
+      // If assignments provided, assign the policy
+      if (args.assignments && args.assignments.length > 0) {
+        const assignPath = `/deviceManagement/configurationPolicies/${result.id}/assign`;
+        await graphClient.api(assignPath).post({ assignments: args.assignments });
+      }
+
+      result.message = 'Settings Catalog policy created successfully';
+      result.template = args.settingsCatalogTemplate;
+      break;
+
+    case 'create_ppc':
+      // Create a Platform Protection Configuration (PPC) policy from template
+      if (!args.ppcTemplate) {
+        throw new McpError(ErrorCode.InvalidParams, 'ppcTemplate is required for create_ppc action');
+      }
+
+      let ppcPolicy: PPCPolicyConfig;
+
+      // Check if using a pre-built template
+      if (args.ppcTemplate in PPC_POLICY_TEMPLATES) {
+        const templateName = args.ppcTemplate as keyof typeof PPC_POLICY_TEMPLATES;
+        ppcPolicy = PPC_POLICY_TEMPLATES[templateName]();
+      } else if (args.customPPCPolicy) {
+        // Use custom policy definition
+        ppcPolicy = args.customPPCPolicy;
+      } else {
+        throw new McpError(ErrorCode.InvalidParams, 'Invalid ppcTemplate or customPPCPolicy required');
+      }
+
+      // Override name and description if provided
+      if (args.name) ppcPolicy.name = args.name;
+      if (args.description) ppcPolicy.description = args.description;
+
+      // Validate policy structure
+      const ppcValidation = validatePPCPolicy(ppcPolicy);
+      if (!ppcValidation.valid) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Invalid PPC policy: ${ppcValidation.errors.join(', ')}`
+        );
+      }
+
+      // Create the PPC policy using Security Management Intent API
+      apiPath = '/deviceManagement/intents';
+      const ppcPayload = {
+        displayName: ppcPolicy.name,
+        description: ppcPolicy.description || '',
+        templateId: ppcPolicy.templateId,
+        settingsDelta: ppcPolicy.settings.map(setting => ({
+          '@odata.type': '#microsoft.graph.deviceManagementIntentSettingDelta',
+          definitionId: setting.id,
+          value: {
+            '@odata.type': '#microsoft.graph.deviceManagementStringValue',
+            value: String(setting.value)
+          },
+          valueState: setting.valueState || 'configured'
+        }))
+      };
+
+      result = await graphClient.api(apiPath).post(ppcPayload);
+      
+      // If assignments provided, assign the policy
+      if (args.assignments && args.assignments.length > 0) {
+        const assignPath = `/deviceManagement/intents/${result.id}/assign`;
+        await graphClient.api(assignPath).post({ assignments: args.assignments });
+      }
+
+      result.message = 'PPC policy created successfully';
+      result.template = args.ppcTemplate;
+      break;
+
+    case 'list_templates':
+      // List available Settings Catalog and PPC templates
+      result = {
+        settingsCatalogTemplates: Object.keys(SETTINGS_CATALOG_POLICY_TEMPLATES).map(key => ({
+          name: key,
+          description: SETTINGS_CATALOG_POLICY_TEMPLATES[key as keyof typeof SETTINGS_CATALOG_POLICY_TEMPLATES]().description
+        })),
+        ppcTemplates: Object.keys(PPC_POLICY_TEMPLATES).map(key => ({
+          name: key,
+          description: PPC_POLICY_TEMPLATES[key as keyof typeof PPC_POLICY_TEMPLATES]().description
+        }))
       };
       break;
 

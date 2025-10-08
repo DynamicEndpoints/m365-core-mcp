@@ -157,6 +157,10 @@ import { AuditReportArgs } from './types/compliance-types.js';
 
 import { handleExchangeSettings } from './exchange-handler.js';
 
+// Import resources and prompts
+import { m365Resources, getResourceByUri, listResources } from './resources.js';
+import { m365Prompts, getPromptByName, listPrompts } from './prompts.js';
+
 // Environment validation - will be checked lazily when tools are executed
 // These values will be set from HTTP request configuration in index.ts
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -202,9 +206,10 @@ export class M365CoreServer {
       }
     });
 
-    // Register tools and resources immediately (no network calls)
+    // Register tools, resources, and prompts immediately (no network calls)
     this.setupTools();
     this.setupResources();
+    this.setupPrompts();
     
     // Error handling
     process.on('SIGINT', async () => {
@@ -1095,33 +1100,84 @@ export class M365CoreServer {
   }
   
   private setupResources(): void {
-    // Basic resources - simplified for now
-    this.server.resource(
-      "current_user",
-      "m365://users/current",
-      async (uri: URL) => {
-        try {
-          const currentUser = await this.getGraphClient()
-            .api('/me')
-            .get();
-          
-          return {
-            contents: [
-              {
-                uri: uri.href,
-                mimeType: 'application/json',
-                text: JSON.stringify(currentUser, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
+    // Register all M365 resources
+    for (const resource of m365Resources) {
+      this.server.resource(
+        resource.name,
+        resource.uri,
+        async (uri: URL) => {
+          try {
+            this.validateCredentials();
+            const params = new URLSearchParams(uri.search);
+            const data = await resource.handler(this.getGraphClient(), params);
+            
+            return {
+              contents: [
+                {
+                  uri: uri.href,
+                  mimeType: resource.mimeType,
+                  text: JSON.stringify(data, null, 2),
+                },
+              ],
+            };
+          } catch (error) {
+            throw new McpError(
+              ErrorCode.InternalError,
+              `Error reading resource ${resource.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        }
+      );
+    }
+    
+    console.log(`✅ Registered ${m365Resources.length} MCP resources`);
+  }
+
+  private setupPrompts(): void {
+    // Register all M365 prompts
+    for (const prompt of m365Prompts) {
+      // Convert arguments array to Zod schema shape required by MCP SDK
+      const argsShape: Record<string, any> = {};
+      if (prompt.arguments) {
+        for (const arg of prompt.arguments) {
+          // Create Zod string schema with description
+          const zodSchema = z.string().describe(arg.description);
+          // Make it optional if not required
+          argsShape[arg.name] = arg.required ? zodSchema : zodSchema.optional();
         }
       }
-    );
+      
+      this.server.prompt(
+        prompt.name,
+        prompt.description,
+        argsShape,
+        async (args: Record<string, string>) => {
+          try {
+            this.validateCredentials();
+            const message = await prompt.handler(this.getGraphClient(), args);
+            
+            return {
+              messages: [
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: message
+                  }
+                }
+              ]
+            };
+          } catch (error) {
+            throw new McpError(
+              ErrorCode.InternalError,
+              `Error executing prompt ${prompt.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        }
+      );
+    }
+    
+    console.log(`✅ Registered ${m365Prompts.length} MCP prompts`);
   }
 
   // SSE and real-time capabilities

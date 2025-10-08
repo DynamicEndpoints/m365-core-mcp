@@ -466,7 +466,7 @@ export interface WindowsDevice {
 
 // Windows Policy Management Types
 export interface IntuneWindowsPolicyArgs {
-  action: 'list' | 'get' | 'create' | 'update' | 'delete' | 'assign' | 'deploy';
+  action: 'list' | 'get' | 'create' | 'update' | 'delete' | 'assign' | 'deploy' | 'create_settings_catalog' | 'create_ppc' | 'list_templates';
   policyId?: string;
   policyType: 'Configuration' | 'Compliance' | 'Security' | 'Update' | 'AppProtection' | 'EndpointSecurity';
   name?: string;
@@ -479,6 +479,18 @@ export interface IntuneWindowsPolicyArgs {
     installAsManaged?: boolean;
     rebootBehavior?: 'allow' | 'suppress' | 'force';
   };
+  // Settings Catalog Policy parameters
+  settingsCatalogTemplate?: 'BITLOCKER_ENCRYPTION' | 'DEFENDER_ANTIVIRUS' | 'WINDOWS_UPDATE' | 'FIREWALL_CONFIGURATION' | 'PASSWORD_POLICY' | 'ATTACK_SURFACE_REDUCTION';
+  settingsCatalogParams?: {
+    deferQualityDays?: number;
+    deferFeatureDays?: number;
+    minLength?: number;
+    complexity?: number;
+  };
+  customSettingsCatalogPolicy?: any;
+  // PPC Policy parameters
+  ppcTemplate?: 'ATTACK_SURFACE_REDUCTION_PPC' | 'EXPLOIT_PROTECTION_PPC' | 'WEB_PROTECTION_PPC';
+  customPPCPolicy?: any;
 }
 
 export interface WindowsPolicySettings {
