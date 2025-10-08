@@ -159,7 +159,7 @@ import { handleExchangeSettings } from './exchange-handler.js';
 
 // Import resources and prompts
 import { m365Resources, getResourceByUri, listResources } from './resources.js';
-import { m365Prompts, getPromptByName, listPrompts } from './prompts.js';
+import { allM365Prompts, getPromptByName, listPrompts } from './prompts.js';
 
 // Environment validation - will be checked lazily when tools are executed
 // These values will be set from HTTP request configuration in index.ts
@@ -1134,8 +1134,8 @@ export class M365CoreServer {
   }
 
   private setupPrompts(): void {
-    // Register all M365 prompts
-    for (const prompt of m365Prompts) {
+    // Register all M365 prompts (general + Intune-specific)
+    for (const prompt of allM365Prompts) {
       // Convert arguments array to Zod schema shape required by MCP SDK
       const argsShape: Record<string, any> = {};
       if (prompt.arguments) {
@@ -1177,7 +1177,7 @@ export class M365CoreServer {
       );
     }
     
-    console.log(`✅ Registered ${m365Prompts.length} MCP prompts`);
+    console.log(`✅ Registered ${allM365Prompts.length} MCP prompts`);
   }
 
   // SSE and real-time capabilities

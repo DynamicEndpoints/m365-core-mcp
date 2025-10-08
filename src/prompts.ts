@@ -1,4 +1,5 @@
 import { Client } from '@microsoft/microsoft-graph-client';
+import { intunePolicyPrompts } from './prompts-intune-policy-guide.js';
 
 /**
  * MCP Prompts for Microsoft 365
@@ -1048,9 +1049,17 @@ export function getPromptByName(name: string): PromptHandler | undefined {
  * List all available prompts
  */
 export function listPrompts(): Array<{ name: string; description: string; arguments?: Array<{ name: string; description: string; required: boolean }> }> {
-  return m365Prompts.map(p => ({
+  // Combine all prompts (general M365 + Intune-specific)
+  const allPrompts = [...m365Prompts, ...intunePolicyPrompts];
+  
+  return allPrompts.map(p => ({
     name: p.name,
     description: p.description,
     arguments: p.arguments
   }));
 }
+
+/**
+ * Export combined prompts for server registration
+ */
+export const allM365Prompts = [...m365Prompts, ...intunePolicyPrompts];
