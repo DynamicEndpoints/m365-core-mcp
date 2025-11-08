@@ -682,26 +682,6 @@ export class M365CoreServer {
       })
     );
 
-    // Sensitivity Label Management - Lazy loading enabled for tool discovery
-    this.server.tool(
-      "manage_sensitivity_labels",
-      sensitivityLabelSchema.shape,
-      wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
-        this.validateCredentials();
-        try {
-          return await handleDLPSensitivityLabels(this.getGraphClient(), args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
     // Intune macOS Device Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_macos_devices",
