@@ -134,6 +134,31 @@ tools:
     category: Security & Compliance
     tags: [sensitivity-labels, information-protection, classification, compliance]
 
+  - name: manage_retention_policies
+    description: Manage retention policies for email, documents, and other content across Microsoft 365
+    category: Security & Compliance
+    tags: [retention, compliance, records-management, data-governance]
+
+  - name: manage_conditional_access_policies
+    description: Manage Azure AD conditional access policies for secure access control
+    category: Security & Compliance
+    tags: [conditional-access, security, zero-trust, authentication]
+
+  - name: manage_information_protection_policies
+    description: Manage Azure Information Protection policies for data classification and protection
+    category: Security & Compliance
+    tags: [information-protection, data-security, classification, compliance]
+
+  - name: manage_defender_policies
+    description: Manage Microsoft Defender for Office 365 security policies and settings
+    category: Security & Compliance
+    tags: [defender, security, threat-protection, anti-malware]
+
+  - name: manage_security_alert_policies
+    description: Manage security alert policies and notification rules across Microsoft 365
+    category: Security & Compliance
+    tags: [security-alerts, notifications, monitoring, incident-response]
+
   # Intune macOS Management Tools
   - name: manage_intune_macos_devices
     description: Manage macOS devices in Microsoft Intune - enrollment, compliance, and device actions
@@ -150,7 +175,7 @@ tools:
     category: Device Management
     tags: [intune, macos, applications, app-deployment]
 
-  - name: assess_intune_macos_compliance
+  - name: manage_intune_macos_compliance
     description: Assess and report on macOS device compliance with organizational policies
     category: Device Management
     tags: [intune, macos, compliance, assessment, reporting]
@@ -232,6 +257,22 @@ tools:
     description: Execute advanced search queries across Microsoft 365 content using Graph Search API
     category: Advanced API
     tags: [graph-api, search, content-discovery, advanced-queries]
+
+  # Policy Management Tools
+  - name: manage_teams_policies
+    description: Manage Microsoft Teams policies including messaging, meeting, and calling policies
+    category: Microsoft Teams
+    tags: [teams, policies, governance, collaboration, configuration]
+
+  - name: manage_exchange_policies
+    description: Manage Exchange Online policies including mail flow, retention, and mobile device policies
+    category: Exchange Online
+    tags: [exchange, email, policies, mail-flow, governance]
+
+  - name: manage_sharepoint_governance_policies
+    description: Manage SharePoint governance policies including sharing, access, and site policies
+    category: SharePoint
+    tags: [sharepoint, governance, policies, sharing, access-control]
 
   # Document Generation Tools
   - name: generate_powerpoint_presentation
