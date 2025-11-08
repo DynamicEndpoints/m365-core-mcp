@@ -233,6 +233,32 @@ tools:
     category: Advanced API
     tags: [graph-api, search, content-discovery, advanced-queries]
 
+  # Document Generation Tools
+  - name: generate_powerpoint_presentation
+    description: Create, retrieve, list, or export PowerPoint presentations with custom slides, charts, and templates
+    category: Document Generation
+    tags: [powerpoint, presentations, documents, office, reporting]
+
+  - name: generate_word_document
+    description: Create, retrieve, list, or export Word documents with sections, tables, and professional formatting
+    category: Document Generation
+    tags: [word, documents, reports, office, documentation]
+
+  - name: generate_html_report
+    description: Create interactive HTML reports and dashboards with themes, charts, and responsive design
+    category: Document Generation
+    tags: [html, reports, dashboards, visualization, web]
+
+  - name: generate_professional_report
+    description: Generate comprehensive multi-format reports from Microsoft 365 data in PowerPoint, Word, HTML, and PDF
+    category: Document Generation
+    tags: [reports, analytics, multi-format, automation, business-intelligence]
+
+  - name: oauth_authorize
+    description: Manage OAuth 2.0 authorization for user-delegated file access to OneDrive and SharePoint
+    category: Authentication
+    tags: [oauth, authentication, authorization, security, file-access]
+
   # Dynamic Graph API Tools (Generated at Runtime)
   - name: manage_teams_resources
     description: Dynamically manage Microsoft Teams resources - teams, channels, messages, meetings
