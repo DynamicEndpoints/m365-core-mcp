@@ -77,12 +77,12 @@ export const wordSectionSchema = z.object({
   tableData: tableDataSchema.optional().describe('Table data (for table type)'),
   imageUrl: z.string().optional().describe('Image URL (for image type)'),
   style: z.object({
-    bold: z.boolean().optional(),
-    italic: z.boolean().optional(),
-    underline: z.boolean().optional(),
+    bold: z.boolean().optional().describe('Apply bold formatting'),
+    italic: z.boolean().optional().describe('Apply italic formatting'),
+    underline: z.boolean().optional().describe('Apply underline formatting'),
     color: z.string().optional().describe('Text color (hex code)'),
     fontSize: z.number().optional().describe('Font size in points'),
-    alignment: z.enum(['left', 'center', 'right', 'justify']).optional()
+    alignment: z.enum(['left', 'center', 'right', 'justify']).optional().describe('Text alignment')
   }).optional().describe('Text styling options')
 });
 
@@ -134,10 +134,10 @@ export const htmlSectionSchema = z.object({
   chartData: chartDataSchema.optional().describe('Chart data (for chart type)'),
   gridColumns: z.number().optional().describe('Number of columns (for grid type)'),
   cardData: z.array(z.object({
-    title: z.string(),
-    value: z.union([z.string(), z.number()]),
-    icon: z.string().optional(),
-    color: z.string().optional()
+    title: z.string().describe('Card title'),
+    value: z.union([z.string(), z.number()]).describe('Card value'),
+    icon: z.string().optional().describe('Card icon name'),
+    color: z.string().optional().describe('Card color (hex code)')
   })).optional().describe('Card data (for card type)'),
   alertType: z.enum(['info', 'success', 'warning', 'danger']).optional()
     .describe('Alert type (for alert type)')
