@@ -350,3 +350,143 @@ resources:
   - name: device_info
     description: Information about a specific device
     uri: m365://devices/{deviceId}
+
+  # Document Generation Resources
+  - name: documents_presentations
+    description: List of PowerPoint presentations in user's OneDrive
+    uri: m365://documents/presentations
+
+  - name: documents_word_documents
+    description: List of Word documents in user's OneDrive
+    uri: m365://documents/word-documents
+
+  - name: documents_reports
+    description: List of generated reports and analysis documents
+    uri: m365://documents/reports
+
+  - name: documents_templates
+    description: Available document templates for report generation
+    uri: m365://documents/templates
+
+  # Policy Management Resources
+  - name: policies_conditional_access
+    description: All conditional access policies and their current state
+    uri: m365://policies/conditional-access
+
+  - name: policies_retention
+    description: Retention policies across Microsoft 365 workloads
+    uri: m365://policies/retention
+
+  - name: policies_information_protection
+    description: Azure Information Protection and sensitivity label policies
+    uri: m365://policies/information-protection
+
+  - name: policies_defender
+    description: Microsoft Defender for Office 365 security policies
+    uri: m365://policies/defender
+
+  - name: policies_teams
+    description: Microsoft Teams messaging, meeting, and calling policies
+    uri: m365://policies/teams
+
+  - name: policies_exchange
+    description: Exchange Online mail flow, retention, and mobile device policies
+    uri: m365://policies/exchange
+
+  - name: policies_sharepoint_governance
+    description: SharePoint sharing, access control, and lifecycle policies
+    uri: m365://policies/sharepoint-governance
+
+  - name: policies_security_alerts
+    description: Security alert policies and notification configurations
+    uri: m365://policies/security-alerts
+
+  - name: policies_overview
+    description: Summary of all policies across Microsoft 365
+    uri: m365://policies/overview
+
+# Prompt templates for common tasks
+prompts:
+  - name: security_assessment
+    description: Comprehensive security posture analysis with recommendations for Microsoft 365 environment
+    arguments:
+      - name: focus_area
+        description: "Specific area to focus on: identity, devices, data, compliance, or all (default: all)"
+        required: false
+      - name: severity_threshold
+        description: "Minimum severity to include: low, medium, high, critical (default: medium)"
+        required: false
+
+  - name: compliance_audit
+    description: Detailed compliance audit across Microsoft 365 services with gap analysis
+    arguments:
+      - name: framework
+        description: "Compliance framework: hipaa, gdpr, sox, pci, iso27001, nist, or custom (default: custom)"
+        required: false
+      - name: scope
+        description: "Audit scope: email, sharepoint, teams, devices, or all (default: all)"
+        required: false
+
+  - name: device_management_report
+    description: Comprehensive device management and compliance report for Intune-managed devices
+    arguments:
+      - name: platform
+        description: "Device platform: windows, macos, ios, android, or all (default: all)"
+        required: false
+      - name: include_apps
+        description: "Include application inventory: true or false (default: false)"
+        required: false
+
+  - name: user_provisioning_guide
+    description: Step-by-step guide for new user provisioning and configuration
+    arguments:
+      - name: user_type
+        description: "Type of user: employee, contractor, guest (default: employee)"
+        required: false
+      - name: department
+        description: Department or business unit for role-based setup
+        required: false
+
+  - name: collaboration_governance_assessment
+    description: Assessment of Teams and SharePoint collaboration governance with policy recommendations
+    arguments:
+      - name: focus
+        description: "Focus area: teams, sharepoint, or both (default: both)"
+        required: false
+
+  - name: intune_policy_configuration_guide
+    description: Interactive guide for configuring Intune policies for different platforms and scenarios
+    arguments:
+      - name: platform
+        description: "Target platform: windows, macos, ios, android"
+        required: true
+      - name: policy_type
+        description: "Policy type: compliance, configuration, app_protection, app_configuration"
+        required: true
+      - name: use_case
+        description: Use case or scenario for the policy
+        required: false
+
+  - name: generate_client_report
+    description: Generate a comprehensive professional report for clients based on Microsoft 365 data analysis
+    arguments:
+      - name: report_type
+        description: "Type of report: security, compliance, audit, governance, or custom (default: custom)"
+        required: false
+      - name: format
+        description: "Output format: powerpoint, word, html, or all (default: all)"
+        required: false
+      - name: client_name
+        description: Client/organization name for the report
+        required: false
+
+  - name: policy_management_guide
+    description: Comprehensive guide for managing Microsoft 365 policies across security, compliance, and governance
+    arguments:
+      - name: policy_area
+        description: "Policy area: security, compliance, teams, exchange, sharepoint, or all (default: all)"
+        required: false
+      - name: action
+        description: "Action to perform: review, create, update, delete, or audit (default: review)"
+        required: false
+

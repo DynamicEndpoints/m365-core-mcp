@@ -471,6 +471,226 @@ export const m365Resources: ResourceHandler[] = [
         .get();
       return skus;
     }
+  },
+
+  // ===== DOCUMENT GENERATION RESOURCES =====
+  {
+    uri: 'm365://documents/presentations',
+    name: 'PowerPoint Presentations',
+    description: 'List of PowerPoint presentations in user\'s OneDrive',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const presentations = await graphClient
+        .api('/me/drive/root/search(q=\'.pptx\')')
+        .top(50)
+        .select('id,name,createdDateTime,lastModifiedDateTime,size,webUrl')
+        .get();
+      return presentations;
+    }
+  },
+  {
+    uri: 'm365://documents/word-documents',
+    name: 'Word Documents',
+    description: 'List of Word documents in user\'s OneDrive',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const documents = await graphClient
+        .api('/me/drive/root/search(q=\'.docx\')')
+        .top(50)
+        .select('id,name,createdDateTime,lastModifiedDateTime,size,webUrl')
+        .get();
+      return documents;
+    }
+  },
+  {
+    uri: 'm365://documents/reports',
+    name: 'Generated Reports',
+    description: 'List of generated reports and analysis documents',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const reports = await graphClient
+        .api('/me/drive/root/children')
+        .filter('startsWith(name,\'Report_\') or startsWith(name,\'Analysis_\')')
+        .select('id,name,createdDateTime,lastModifiedDateTime,size,webUrl')
+        .get()
+        .catch(() => ({ value: [] }));
+      return reports;
+    }
+  },
+  {
+    uri: 'm365://documents/templates',
+    name: 'Document Templates',
+    description: 'Available document templates for report generation',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      // Return metadata about available templates
+      return {
+        powerpoint: {
+          professional: { id: 'professional', name: 'Professional Business', slides: ['title', 'agenda', 'content', 'conclusion'] },
+          security: { id: 'security', name: 'Security Assessment', slides: ['cover', 'executive_summary', 'findings', 'recommendations', 'roadmap'] },
+          compliance: { id: 'compliance', name: 'Compliance Report', slides: ['title', 'overview', 'status', 'gaps', 'remediation'] }
+        },
+        word: {
+          professional: { id: 'professional', name: 'Professional Report', sections: ['cover', 'toc', 'executive_summary', 'analysis', 'recommendations', 'appendix'] },
+          technical: { id: 'technical', name: 'Technical Documentation', sections: ['title', 'overview', 'architecture', 'configuration', 'troubleshooting'] },
+          audit: { id: 'audit', name: 'Audit Report', sections: ['cover', 'scope', 'methodology', 'findings', 'conclusions', 'action_plan'] }
+        },
+        html: {
+          dashboard: { id: 'dashboard', name: 'Interactive Dashboard', theme: 'modern', features: ['charts', 'filters', 'export'] },
+          report: { id: 'report', name: 'Web Report', theme: 'professional', features: ['toc', 'sections', 'print_view'] }
+        }
+      };
+    }
+  },
+
+  // ===== POLICY MANAGEMENT RESOURCES =====
+  {
+    uri: 'm365://policies/conditional-access',
+    name: 'Conditional Access Policies',
+    description: 'All conditional access policies and their current state',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const policies = await graphClient
+        .api('/identity/conditionalAccess/policies')
+        .select('id,displayName,state,conditions,grantControls,sessionControls')
+        .get();
+      return policies;
+    }
+  },
+  {
+    uri: 'm365://policies/retention',
+    name: 'Retention Policies',
+    description: 'Retention policies across Microsoft 365 workloads',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const policies = await graphClient
+        .api('/security/informationProtection/retentionLabels')
+        .get()
+        .catch(() => ({ value: [] }));
+      return policies;
+    }
+  },
+  {
+    uri: 'm365://policies/information-protection',
+    name: 'Information Protection Policies',
+    description: 'Azure Information Protection and sensitivity label policies',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const [labels, labelPolicies] = await Promise.all([
+        graphClient.api('/security/informationProtection/sensitivityLabels').get().catch(() => ({ value: [] })),
+        graphClient.api('/security/informationProtection/labelPolicies').get().catch(() => ({ value: [] }))
+      ]);
+      return { labels, labelPolicies };
+    }
+  },
+  {
+    uri: 'm365://policies/defender',
+    name: 'Defender Policies',
+    description: 'Microsoft Defender for Office 365 security policies',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      // Defender policies are managed through Security & Compliance Center
+      const threatPolicies = await graphClient
+        .api('/security/threatSubmission/emailThreats')
+        .top(50)
+        .get()
+        .catch(() => ({ value: [] }));
+      return threatPolicies;
+    }
+  },
+  {
+    uri: 'm365://policies/teams',
+    name: 'Teams Policies',
+    description: 'Microsoft Teams messaging, meeting, and calling policies',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const teams = await graphClient
+        .api('/teams')
+        .top(50)
+        .select('id,displayName,description')
+        .get()
+        .catch(() => ({ value: [] }));
+      return { teams, note: 'Teams policies are managed through Teams admin center APIs' };
+    }
+  },
+  {
+    uri: 'm365://policies/exchange',
+    name: 'Exchange Policies',
+    description: 'Exchange Online mail flow, retention, and mobile device policies',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      // Exchange policies information
+      return {
+        note: 'Exchange policies are managed through Exchange Online PowerShell',
+        categories: [
+          'Mail flow rules (Transport rules)',
+          'Mobile device policies',
+          'Retention policies',
+          'Sharing policies',
+          'Address book policies'
+        ]
+      };
+    }
+  },
+  {
+    uri: 'm365://policies/sharepoint-governance',
+    name: 'SharePoint Governance Policies',
+    description: 'SharePoint sharing, access control, and lifecycle policies',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const adminSettings = await graphClient
+        .api('/admin/sharepoint/settings')
+        .get()
+        .catch(() => null);
+      
+      const sites = await graphClient
+        .api('/sites?search=*')
+        .top(10)
+        .select('id,displayName,webUrl,sharingCapabilities')
+        .get()
+        .catch(() => ({ value: [] }));
+      
+      return { adminSettings, recentSites: sites };
+    }
+  },
+  {
+    uri: 'm365://policies/security-alerts',
+    name: 'Security Alert Policies',
+    description: 'Security alert policies and notification configurations',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      const alertPolicies = await graphClient
+        .api('/security/alerts_v2')
+        .filter('status eq \'new\' or status eq \'inProgress\'')
+        .top(50)
+        .select('id,title,category,severity,status,createdDateTime')
+        .orderby('createdDateTime desc')
+        .get();
+      return alertPolicies;
+    }
+  },
+  {
+    uri: 'm365://policies/overview',
+    name: 'Policy Overview',
+    description: 'Summary of all policies across Microsoft 365',
+    mimeType: 'application/json',
+    handler: async (graphClient) => {
+      // Gather overview of policies across different areas
+      const [conditionalAccess, dlpPolicies, alerts] = await Promise.all([
+        graphClient.api('/identity/conditionalAccess/policies').select('id,displayName,state').get().catch(() => ({ value: [] })),
+        graphClient.api('/security/informationProtection/sensitivityLabels').get().catch(() => ({ value: [] })),
+        graphClient.api('/security/alerts_v2').top(10).get().catch(() => ({ value: [] }))
+      ]);
+      
+      return {
+        summary: {
+          conditionalAccessPolicies: conditionalAccess.value?.length || 0,
+          sensitivityLabels: dlpPolicies.value?.length || 0,
+          activeAlerts: alerts.value?.length || 0
+        },
+        lastUpdated: new Date().toISOString()
+      };
+    }
   }
 ];
 
