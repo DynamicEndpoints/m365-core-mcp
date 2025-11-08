@@ -72,6 +72,21 @@ import {
   auditReportSchema,
   cisComplianceSchema,
   m365CoreTools,
+  dlpPolicyArgsSchema,
+  retentionPolicyArgsSchema,
+  sensitivityLabelArgsSchema,
+  informationProtectionPolicyArgsSchema,
+  conditionalAccessPolicyArgsSchema,
+  defenderPolicyArgsSchema,
+  teamsPolicyArgsSchema,
+  exchangePolicyArgsSchema,
+  sharePointGovernancePolicyArgsSchema,
+  securityAlertPolicyArgsSchema,
+  powerPointPresentationArgsSchema,
+  wordDocumentArgsSchema,
+  htmlReportArgsSchema,
+  professionalReportArgsSchema,
+  oauthAuthorizationArgsSchema
 } from './tool-definitions.js';
 
 import {
@@ -154,6 +169,46 @@ import {
 // Import audit reporting handler
 import { handleAuditReports } from './handlers/audit-reporting-handler.js';
 import { AuditReportArgs } from './types/compliance-types.js';
+
+// Import Microsoft Purview/Compliance policy handlers and types
+import {
+  handleRetentionPolicies,
+  handleSensitivityLabels,
+  handleInformationProtectionPolicies
+} from './handlers/purview-compliance-handler.js';
+import {
+  RetentionPolicyArgs,
+  SensitivityLabelArgs,
+  InformationProtectionPolicyArgs,
+  ConditionalAccessPolicyArgs,
+  DefenderPolicyArgs,
+  TeamsPolicyArgs,
+  ExchangePolicyArgs,
+  SharePointGovernancePolicyArgs,
+  SecurityAlertPolicyArgs
+} from './types/policy-types.js';
+import { handleConditionalAccessPolicies } from './handlers/conditional-access-handler.js';
+import {
+  handleDefenderPolicies,
+  handleTeamsPolicies,
+  handleExchangePolicies,
+  handleSharePointGovernancePolicies,
+  handleSecurityAlertPolicies
+} from './handlers/security-policy-handlers.js';
+
+// Import document generation handlers and types
+import { handlePowerPointPresentations } from './handlers/powerpoint-handler.js';
+import { handleWordDocuments } from './handlers/word-document-handler.js';
+import { handleHTMLReports } from './handlers/html-report-handler.js';
+import { handleProfessionalReports } from './handlers/professional-report-handler.js';
+import { handleOAuthAuthorization } from './handlers/oauth-handler.js';
+import {
+  PowerPointPresentationArgs,
+  WordDocumentArgs,
+  HTMLReportArgs,
+  ProfessionalReportArgs,
+  OAuthAuthorizationArgs
+} from './types/document-generation-types.js';
 
 import { handleExchangeSettings } from './exchange-handler.js';
 
@@ -947,11 +1002,309 @@ export class M365CoreServer {
       })
     );
 
+    // ===== Microsoft 365 Policy Management Tools =====
+
+    // Retention Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_retention_policies",
+      retentionPolicyArgsSchema.shape,
+      wrapToolHandler(async (args: RetentionPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleRetentionPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Sensitivity Label Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_sensitivity_labels",
+      sensitivityLabelArgsSchema.shape,
+      wrapToolHandler(async (args: SensitivityLabelArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleSensitivityLabels(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Information Protection Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_information_protection_policies",
+      informationProtectionPolicyArgsSchema.shape,
+      wrapToolHandler(async (args: InformationProtectionPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleInformationProtectionPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Conditional Access Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_conditional_access_policies",
+      conditionalAccessPolicyArgsSchema.shape,
+      wrapToolHandler(async (args: ConditionalAccessPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleConditionalAccessPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Microsoft Defender for Office 365 Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_defender_policies",
+      defenderPolicyArgsSchema.shape,
+      wrapToolHandler(async (args: DefenderPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleDefenderPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Microsoft Teams Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_teams_policies",
+      teamsPolicyArgsSchema.shape,
+      wrapToolHandler(async (args: TeamsPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleTeamsPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Exchange Online Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_exchange_policies",
+      exchangePolicyArgsSchema.shape,
+      wrapToolHandler(async (args: ExchangePolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleExchangePolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // SharePoint Governance Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_sharepoint_governance_policies",
+      sharePointGovernancePolicyArgsSchema.shape,
+      wrapToolHandler(async (args: SharePointGovernancePolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleSharePointGovernancePolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Security and Compliance Alert Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_security_alert_policies",
+      securityAlertPolicyArgsSchema.shape,
+      wrapToolHandler(async (args: SecurityAlertPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleSecurityAlertPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Document Generation Tools
+    this.setupDocumentGenerationTools();
+
     // Advanced Graph API Features
     this.setupAdvancedGraphTools();
     
     // Dynamic tool generation (async - will generate tools in background)
     this.setupDynamicTools();
+  }
+
+  // Setup document generation tools
+  private setupDocumentGenerationTools(): void {
+    // PowerPoint Presentation Generation
+    this.server.tool(
+      "generate_powerpoint_presentation",
+      powerPointPresentationArgsSchema.shape,
+      wrapToolHandler(async (args: PowerPointPresentationArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handlePowerPointPresentations(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating PowerPoint presentation: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Word Document Generation
+    this.server.tool(
+      "generate_word_document",
+      wordDocumentArgsSchema.shape,
+      wrapToolHandler(async (args: WordDocumentArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handleWordDocuments(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating Word document: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // HTML Report Generation
+    this.server.tool(
+      "generate_html_report",
+      htmlReportArgsSchema.shape,
+      wrapToolHandler(async (args: HTMLReportArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handleHTMLReports(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating HTML report: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Professional Report Generation (Multi-format)
+    this.server.tool(
+      "generate_professional_report",
+      professionalReportArgsSchema.shape,
+      wrapToolHandler(async (args: ProfessionalReportArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handleProfessionalReports(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating professional report: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // OAuth Authorization
+    this.server.tool(
+      "oauth_authorize",
+      oauthAuthorizationArgsSchema.shape,
+      wrapToolHandler(async (args: OAuthAuthorizationArgs) => {
+        try {
+          // OAuth doesn't require Graph client validation - it handles its own token management
+          const clientId = getEnvVar('MS_CLIENT_ID');
+          const clientSecret = getEnvVar('MS_CLIENT_SECRET');
+          const tenantId = getEnvVar('MS_TENANT_ID');
+          const redirectUri = getEnvVar('MS_REDIRECT_URI') || 'http://localhost:3000/auth/callback';
+          
+          const result = await handleOAuthAuthorization(args, clientId, clientSecret, tenantId, redirectUri);
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error handling OAuth authorization: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
   }
 
   // Setup advanced Graph API tools

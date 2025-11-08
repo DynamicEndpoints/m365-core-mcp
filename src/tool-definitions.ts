@@ -524,3 +524,26 @@ export const m365CoreTools = {
 export { z };
 
 export * from './tool-definitions-intune.js';
+
+// Import policy schemas
+export {
+  dlpPolicyArgsSchema,
+  retentionPolicyArgsSchema,
+  sensitivityLabelArgsSchema,
+  informationProtectionPolicyArgsSchema,
+  conditionalAccessPolicyArgsSchema,
+  defenderPolicyArgsSchema,
+  teamsPolicyArgsSchema,
+  exchangePolicyArgsSchema,
+  sharePointGovernancePolicyArgsSchema,
+  securityAlertPolicyArgsSchema
+} from './schemas/policy-schemas.js';
+
+// Export document generation schemas
+export {
+  powerPointPresentationArgsSchema,
+  wordDocumentArgsSchema,
+  htmlReportArgsSchema,
+  professionalReportArgsSchema,
+  oauthAuthorizationArgsSchema
+} from './schemas/document-generation-schemas.js';
