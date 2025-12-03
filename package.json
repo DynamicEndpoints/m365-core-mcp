@@ -17,19 +17,19 @@
     "test": "jest"
   },
   "dependencies": {
-    "@azure/identity": "^4.2.1",
+    "@azure/identity": "^4.13.0",
     "@azure/msal-node": "^2.0.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.12.3",
     "csv-writer": "^1.6.0",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "handlebars": "^4.7.8",
     "html-pdf-node": "^1.0.7",
     "isomorphic-fetch": "^3.0.0",
     "moment": "^2.29.4",
     "puppeteer": "^23.8.0",
     "xlsx": "^0.18.5",
-    "zod": "^3.24.3",
+    "zod": "^3.24.2",
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
