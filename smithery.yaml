@@ -6,6 +6,12 @@ build:
   dockerfile: "Dockerfile"
   dockerBuildPath: "."
 
+# Environment variables for the container
+env:
+  NODE_ENV: "production"
+  USE_HTTP: "true"
+  PORT: "8080"
+
 startCommand:
   type: "http"
   configSchema:
@@ -17,12 +23,15 @@ startCommand:
     properties:
       msTenantId:
         type: string
+        title: "Microsoft Tenant ID"
         description: Microsoft Tenant ID for authentication
       msClientId:
         type: string
+        title: "Microsoft Client ID"
         description: Microsoft Client ID for authentication
       msClientSecret:
         type: string
+        title: "Microsoft Client Secret"
         description: Microsoft Client Secret for authentication
       stateless:
         type: boolean

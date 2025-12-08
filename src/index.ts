@@ -7,7 +7,8 @@ import { randomUUID } from 'node:crypto';
 import { M365CoreServer } from './server.js';
 
 // Environment validation
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+// Default port 8080 for Smithery compatibility
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const USE_HTTP = process.env.USE_HTTP === 'true';
 const STATELESS = process.env.STATELESS === 'true';

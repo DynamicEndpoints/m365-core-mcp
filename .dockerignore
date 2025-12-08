@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build outputs (will be rebuilt in container)
+build/
+dist/
+
+# Development files
+*.log
+*.md
+!README.md
+
+# Test files
+test-*.ts
+test-*.js
+test-*.mjs
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Environment files (credentials should be passed via config)
+.env
+.env.*
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Validation and audit scripts
+validate-*.mjs
+verify-*.mjs
+audit-*.mjs
+comprehensive-test-suite.mjs
+quick-validation.mjs
+
+# Fix scripts
+fix-*.js
+fix-*.mjs
+convert-*.mjs
+update-*.mjs

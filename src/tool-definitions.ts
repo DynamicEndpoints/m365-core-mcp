@@ -33,7 +33,7 @@ export const sharePointListSchema = z.object({
     required: z.boolean().optional().describe('Whether the column is required'),
     defaultValue: z.any().optional().describe('Default value for the column'),
   })).optional().describe('List column definitions'),
-  items: z.array(z.record(z.any())).optional().describe('Items to add to the list'),
+  items: z.array(z.record(z.string(), z.any())).optional().describe('Items to add to the list'),
 });
 
 // Distribution List Management
@@ -90,8 +90,8 @@ export const exchangeSettingsSchema = z.object({
     }).optional().describe('Automated processing settings'),
     rules: z.array(z.object({
       name: z.string().describe('Rule name'),
-      conditions: z.record(z.any()).describe('Rule conditions'),
-      actions: z.record(z.any()).describe('Rule actions'),
+      conditions: z.record(z.string(), z.any()).describe('Rule conditions'),
+      actions: z.record(z.string(), z.any()).describe('Rule actions'),
     })).optional().describe('Transport rules'),
     sharingPolicy: z.object({
       enabled: z.boolean().optional().describe('Enable sharing policy'),
@@ -109,7 +109,7 @@ export const exchangeSettingsSchema = z.object({
 export const userManagementSchema = z.object({
   action: z.enum(['get', 'update']).describe('Action to perform on user settings'),
   userId: z.string().describe('User ID or UPN'),
-  settings: z.record(z.unknown()).optional().describe('User settings to update'),
+  settings: z.record(z.string(), z.unknown()).optional().describe('User settings to update'),
 });
 
 // User Offboarding Process
@@ -168,8 +168,8 @@ export const callMicrosoftApiSchema = z.object({
   method: z.enum(['get', 'post', 'put', 'patch', 'delete']).describe('HTTP method'),
   apiVersion: z.string().optional().describe('Azure API version (required for Azure APIs)'),
   subscriptionId: z.string().optional().describe('Azure Subscription ID (for Azure APIs)'),
-  queryParams: z.record(z.string()).optional().describe('Query parameters'),
-  body: z.record(z.any()).optional().describe('Request body (for POST, PUT, PATCH)'),
+  queryParams: z.record(z.string(), z.string()).optional().describe('Query parameters'),
+  body: z.record(z.string(), z.any()).optional().describe('Request body (for POST, PUT, PATCH)'),
   
   // Graph API specific parameters (existing + enhanced)
   graphApiVersion: z.enum(['v1.0', 'beta']).optional().default('v1.0').describe('Microsoft Graph API version to use (default: v1.0)'),
@@ -182,7 +182,7 @@ export const callMicrosoftApiSchema = z.object({
   timeout: z.number().min(5000).max(300000).optional().default(30000).describe('Request timeout in milliseconds (5000-300000, default: 30000)'),
   
   // Customization features
-  customHeaders: z.record(z.string()).optional().describe('Additional custom headers to include in the request'),
+  customHeaders: z.record(z.string(), z.string()).optional().describe('Additional custom headers to include in the request'),
   responseFormat: z.enum(['json', 'raw', 'minimal']).optional().default('json').describe('Response format: \'json\' (full response), \'raw\' (as received), \'minimal\' (values only)'),
   
   // Graph API enhancement features
@@ -258,7 +258,7 @@ export const sensitivityLabelSchema = z.object({
   name: z.string().optional().describe('Label name'),
   description: z.string().optional().describe('Label description'),
   targetId: z.string().optional().describe('Target resource ID for label application'),
-  settings: z.record(z.any()).optional().describe('Label settings and policies'),
+  settings: z.record(z.string(), z.any()).optional().describe('Label settings and policies'),
 });
 
 // Intune macOS Management
@@ -280,7 +280,7 @@ export const intuneMacOSPolicySchema = z.object({
   policyType: z.enum(['Configuration', 'Compliance', 'Security', 'Update', 'AppProtection']).describe('Type of macOS policy'),
   name: z.string().optional().describe('Policy name'),
   description: z.string().optional().describe('Policy description'),
-  settings: z.record(z.any()).optional().describe('Policy configuration settings'),
+  settings: z.record(z.string(), z.any()).optional().describe('Policy configuration settings'),
   assignments: z.array(z.object({
     target: z.object({
       deviceAndAppManagementAssignmentFilterId: z.string().optional().describe('Filter ID'),
@@ -289,7 +289,7 @@ export const intuneMacOSPolicySchema = z.object({
       collectionId: z.string().optional().describe('Collection ID'),
     }).describe('Assignment target'),
     intent: z.enum(['apply', 'remove']).optional().describe('Assignment intent'),
-    settings: z.record(z.any()).optional().describe('Assignment settings'),
+    settings: z.record(z.string(), z.any()).optional().describe('Assignment settings'),
   })).optional().describe('Policy assignments'),
   deploymentSettings: z.object({
     installBehavior: z.enum(['doNotInstall', 'installAsManaged', 'installAsUnmanaged']).optional().describe('Install behavior'),
@@ -337,7 +337,7 @@ export const intuneWindowsPolicySchema = z.object({
   policyType: z.enum(['Configuration', 'Compliance', 'Security', 'Update', 'AppProtection', 'EndpointSecurity']).describe('Type of Windows policy'),
   name: z.string().optional().describe('Policy name'),
   description: z.string().optional().describe('Policy description'),
-  settings: z.record(z.any()).optional().describe('Policy configuration settings'),
+  settings: z.record(z.string(), z.any()).optional().describe('Policy configuration settings'),
   assignments: z.array(z.object({
     target: z.object({
       deviceAndAppManagementAssignmentFilterId: z.string().optional().describe('Filter ID'),
@@ -346,7 +346,7 @@ export const intuneWindowsPolicySchema = z.object({
       collectionId: z.string().optional().describe('Collection ID'),
     }).describe('Assignment target'),
     intent: z.enum(['apply', 'remove']).optional().describe('Assignment intent'),
-    settings: z.record(z.any()).optional().describe('Assignment settings'),
+    settings: z.record(z.string(), z.any()).optional().describe('Assignment settings'),
   })).optional().describe('Policy assignments'),
   deploymentSettings: z.object({
     installBehavior: z.enum(['doNotInstall', 'installAsManaged', 'installAsUnmanaged']).optional().describe('Install behavior'),
@@ -401,22 +401,22 @@ export const complianceFrameworkSchema = z.object({
   action: z.enum(['list', 'configure', 'status', 'assess', 'activate', 'deactivate']).describe('Compliance framework management action'),
   framework: z.enum(['hitrust', 'iso27001', 'soc2', 'cis']).describe('Compliance framework type'),
   scope: z.array(z.string()).optional().describe('Assessment scope (organization, specific systems)'),
-  settings: z.record(z.unknown()).optional().describe('Framework settings'),
+  settings: z.record(z.string(), z.unknown()).optional().describe('Framework settings'),
 });
 
 export const complianceAssessmentSchema = z.object({
   action: z.enum(['create', 'update', 'execute', 'schedule', 'cancel', 'get_results']).describe('Compliance assessment action'),
   assessmentId: z.string().optional().describe('Assessment ID for tracking'),
   framework: z.enum(['hitrust', 'iso27001', 'soc2']).describe('Framework to assess against'),
-  scope: z.record(z.unknown()).describe('Assessment scope'),
-  settings: z.record(z.unknown()).optional().describe('Assessment settings'),
+  scope: z.record(z.string(), z.unknown()).describe('Assessment scope'),
+  settings: z.record(z.string(), z.unknown()).optional().describe('Assessment settings'),
 });
 
 export const complianceMonitoringSchema = z.object({
   action: z.enum(['get_status', 'get_alerts', 'get_trends', 'configure_monitoring']).describe('Compliance monitoring action'),
   framework: z.enum(['hitrust', 'iso27001', 'soc2']).optional().describe('Framework to monitor'),
-  filters: z.record(z.unknown()).optional().describe('Monitoring filters'),
-  monitoringSettings: z.record(z.unknown()).optional().describe('Monitoring settings'),
+  filters: z.record(z.string(), z.unknown()).optional().describe('Monitoring filters'),
+  monitoringSettings: z.record(z.string(), z.unknown()).optional().describe('Monitoring settings'),
 });
 
 export const evidenceCollectionSchema = z.object({

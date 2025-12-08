@@ -250,16 +250,7 @@ export class M365CoreServer {
   constructor() {
     this.server = new McpServer({
       name: 'm365-core-server',
-      version: '1.0.0',
-      capabilities: {
-        tools: {},
-        resources: {
-          subscribe: true,
-          listChanged: true
-        },
-        prompts: {},
-        logging: {}
-      }
+      version: '1.0.0'
     });
 
     // Register tools, resources, and prompts immediately (no network calls)

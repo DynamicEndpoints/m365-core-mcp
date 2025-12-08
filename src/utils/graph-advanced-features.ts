@@ -402,7 +402,7 @@ export const batchRequestSchema = z.object({
     id: z.string().optional(),
     method: z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE']),
     url: z.string(),
-    headers: z.record(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
     body: z.any().optional()
   })).min(1).max(20)
 });

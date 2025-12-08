@@ -107,8 +107,8 @@ export class DynamicToolGenerator {
       endpoint: z.enum(endpoints.map(e => e.path) as [string, ...string[]]).describe('Graph API endpoint to call'),
       action: z.enum(['get', 'post', 'patch', 'delete', 'list']).describe('HTTP action to perform'),
       version: z.enum(['v1.0', 'beta']).optional().default('v1.0').describe('Graph API version'),
-      queryParams: z.record(z.string()).optional().describe('Query parameters'),
-      body: z.record(z.any()).optional().describe('Request body for POST/PATCH operations'),
+      queryParams: z.record(z.string(), z.string()).optional().describe('Query parameters'),
+      body: z.record(z.string(), z.any()).optional().describe('Request body for POST/PATCH operations'),
       fetchAll: z.boolean().optional().default(false).describe('Fetch all pages of results'),
       consistencyLevel: z.string().optional().describe('Consistency level for advanced queries'),
     });
