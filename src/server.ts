@@ -72,6 +72,21 @@ import {
   auditReportSchema,
   cisComplianceSchema,
   m365CoreTools,
+  dlpPolicyArgsSchema,
+  retentionPolicyArgsSchema,
+  sensitivityLabelArgsSchema,
+  informationProtectionPolicyArgsSchema,
+  conditionalAccessPolicyArgsSchema,
+  defenderPolicyArgsSchema,
+  teamsPolicyArgsSchema,
+  exchangePolicyArgsSchema,
+  sharePointGovernancePolicyArgsSchema,
+  securityAlertPolicyArgsSchema,
+  powerPointPresentationArgsSchema,
+  wordDocumentArgsSchema,
+  htmlReportArgsSchema,
+  professionalReportArgsSchema,
+  oauthAuthorizationArgsSchema
 } from './tool-definitions.js';
 
 import {
@@ -155,11 +170,52 @@ import {
 import { handleAuditReports } from './handlers/audit-reporting-handler.js';
 import { AuditReportArgs } from './types/compliance-types.js';
 
+// Import Microsoft Purview/Compliance policy handlers and types
+import {
+  handleRetentionPolicies,
+  handleSensitivityLabels,
+  handleInformationProtectionPolicies
+} from './handlers/purview-compliance-handler.js';
+import {
+  RetentionPolicyArgs,
+  SensitivityLabelArgs,
+  InformationProtectionPolicyArgs,
+  ConditionalAccessPolicyArgs,
+  DefenderPolicyArgs,
+  TeamsPolicyArgs,
+  ExchangePolicyArgs,
+  SharePointGovernancePolicyArgs,
+  SecurityAlertPolicyArgs
+} from './types/policy-types.js';
+import { handleConditionalAccessPolicies } from './handlers/conditional-access-handler.js';
+import {
+  handleDefenderPolicies,
+  handleTeamsPolicies,
+  handleExchangePolicies,
+  handleSharePointGovernancePolicies,
+  handleSecurityAlertPolicies
+} from './handlers/security-policy-handlers.js';
+
+// Import document generation handlers and types
+import { handlePowerPointPresentations } from './handlers/powerpoint-handler.js';
+import { handleWordDocuments } from './handlers/word-document-handler.js';
+import { handleHTMLReports } from './handlers/html-report-handler.js';
+import { handleProfessionalReports } from './handlers/professional-report-handler.js';
+import { handleOAuthAuthorization } from './handlers/oauth-handler.js';
+import {
+  PowerPointPresentationArgs,
+  WordDocumentArgs,
+  HTMLReportArgs,
+  ProfessionalReportArgs,
+  OAuthAuthorizationArgs
+} from './types/document-generation-types.js';
+
 import { handleExchangeSettings } from './exchange-handler.js';
 
 // Import resources and prompts
 import { m365Resources, getResourceByUri, listResources } from './resources.js';
-import { m365Prompts, getPromptByName, listPrompts } from './prompts.js';
+import { allM365Prompts, getPromptByName, listPrompts } from './prompts.js';
+import { toolMetadata, getToolMetadata } from './tool-metadata.js';
 
 // Environment validation - will be checked lazily when tools are executed
 // These values will be set from HTTP request configuration in index.ts
@@ -194,16 +250,7 @@ export class M365CoreServer {
   constructor() {
     this.server = new McpServer({
       name: 'm365-core-server',
-      version: '1.0.0',
-      capabilities: {
-        tools: {},
-        resources: {
-          subscribe: true,
-          listChanged: true
-        },
-        prompts: {},
-        logging: {}
-      }
+      version: '1.0.0'
     });
 
     // Register tools, resources, and prompts immediately (no network calls)
@@ -280,6 +327,8 @@ export class M365CoreServer {
   }
 
   private validateCredentials(): void {
+    // Configuration is optional - server can run without credentials for discovery
+    // Credentials are only required when actually executing tools
     const requiredEnvVars = ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET'];
     const missingVars = requiredEnvVars.filter(varName => !getEnvVar(varName));
     
@@ -287,17 +336,27 @@ export class M365CoreServer {
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Missing required environment variables for Microsoft 365 authentication: ${missingVars.join(', ')}. ` +
-        `Please configure these variables:\n` +
-        `- MS_TENANT_ID: Your Azure AD tenant ID\n` +
+        `Please configure these variables to use this tool:\n\n` +
+        `Environment Variables:\n` +
+        `- MS_TENANT_ID: Your Azure AD tenant ID (e.g., 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')\n` +
         `- MS_CLIENT_ID: Your Azure AD application (client) ID\n` +
         `- MS_CLIENT_SECRET: Your Azure AD application client secret\n\n` +
-        `For setup instructions, visit: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
+        `Quick Setup:\n` +
+        `1. Register an app in Azure AD: https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade\n` +
+        `2. Grant necessary Microsoft Graph API permissions\n` +
+        `3. Create a client secret\n` +
+        `4. Set environment variables with your credentials\n\n` +
+        `Full setup guide: https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app`
       );
     }
-  }  private setupTools(): void {    // Distribution Lists - Lazy loading enabled for tool discovery
+  }  private setupTools(): void {
+    // Distribution Lists
+    const distributionListsMeta = getToolMetadata("manage_distribution_lists")!;
     this.server.tool(
       "manage_distribution_lists",
+      distributionListsMeta.description,
       distributionListSchema.shape,
+      distributionListsMeta.annotations || {},
       wrapToolHandler(async (args: DistributionListArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();        try {
@@ -315,7 +374,9 @@ export class M365CoreServer {
     );// Security Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_security_groups",
+      "Manage Azure AD security groups for access control, including group creation, membership, and security settings.",
       securityGroupSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: SecurityGroupArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();        try {
@@ -333,7 +394,9 @@ export class M365CoreServer {
     );    // M365 Groups - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_m365_groups",
+      "Manage Microsoft 365 groups for team collaboration with shared resources like mailbox, calendar, and files.",
       m365GroupSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: M365GroupArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();        try {
@@ -351,7 +414,9 @@ export class M365CoreServer {
     );    // Exchange Settings - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_exchange_settings",
+      "Manage Exchange Online settings including mailbox configuration, transport rules, and organization policies.",
       exchangeSettingsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: ExchangeSettingsArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -370,7 +435,9 @@ export class M365CoreServer {
     );    // User Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_user_settings",
+      "Manage user account settings including profile information, mailbox settings, licenses, and authentication methods.",
       userManagementSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: UserManagementArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -389,7 +456,9 @@ export class M365CoreServer {
     );    // Offboarding - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_offboarding",
+      "Automate user offboarding processes including account disablement, license removal, data backup, and access revocation.",
       offboardingSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: OffboardingArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -408,7 +477,9 @@ export class M365CoreServer {
     );    // SharePoint Sites - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_sharepoint_sites",
+      "Manage SharePoint sites including creation, configuration, permissions, and site collection administration.",
       sharePointSiteSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: SharePointSiteArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -427,7 +498,9 @@ export class M365CoreServer {
     );    // SharePoint Lists - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_sharepoint_lists",
+      "Manage SharePoint lists and libraries including schema definition, items, views, and permissions.",
       sharePointListSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: SharePointListArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -446,7 +519,9 @@ export class M365CoreServer {
     );    // Azure AD Roles - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_roles",
+      "Manage Azure AD administrative roles including role assignments, custom roles, and privilege escalation controls.",
       azureAdRoleSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: AzureAdRoleArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -465,7 +540,9 @@ export class M365CoreServer {
     );    // Azure AD Apps - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_apps",
+      "Manage Azure AD application registrations including app permissions, credentials, and OAuth configurations.",
       azureAdAppSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: AzureAdAppArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -486,7 +563,9 @@ export class M365CoreServer {
     // Azure AD Devices - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_azure_ad_devices",
+      "Manage devices registered in Azure AD including device compliance, BitLocker keys, and device actions.",
       azureAdDeviceSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: AzureAdDeviceArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -507,7 +586,9 @@ export class M365CoreServer {
     // Service Principals - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_service_principals",
+      "Manage service principals for application access including permissions, credentials, and enterprise applications.",
       azureAdSpSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: AzureAdSpArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -528,7 +609,9 @@ export class M365CoreServer {
     // Dynamic API Endpoint - Lazy loading enabled for tool discovery
     this.server.tool(
       "call_microsoft_api",
+      "Make direct calls to any Microsoft Graph or Azure Resource Management API endpoint with full control over HTTP methods and parameters.",
       callMicrosoftApiSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
       wrapToolHandler(async (args: CallMicrosoftApiArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -549,7 +632,9 @@ export class M365CoreServer {
     // Audit Log - Lazy loading enabled for tool discovery
     this.server.tool(
       "search_audit_log",
+      "Search and analyze Azure AD unified audit logs for security events, user activities, and compliance monitoring.",
       auditLogSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: AuditLogArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -570,7 +655,9 @@ export class M365CoreServer {
     // Alerts - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_alerts",
+      "Manage security alerts from Microsoft Defender and other security products including investigation and remediation.",
       alertSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: AlertArgs) => {
         // Validate credentials only when tool is executed (lazy loading)
         this.validateCredentials();
@@ -590,7 +677,9 @@ export class M365CoreServer {
     // DLP Policy Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_dlp_policies",
+      "Manage Data Loss Prevention policies to protect sensitive data across Exchange, SharePoint, OneDrive, and Teams.",
       dlpPolicySchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: DLPPolicyArgs) => {
         this.validateCredentials();
         try {
@@ -610,7 +699,9 @@ export class M365CoreServer {
     // DLP Incident Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_dlp_incidents",
+      "Investigate and manage DLP policy violations and incidents including user notifications and remediation actions.",
       dlpIncidentSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
       wrapToolHandler(async (args: DLPIncidentArgs) => {
         this.validateCredentials();
         try {
@@ -627,30 +718,12 @@ export class M365CoreServer {
       })
     );
 
-    // Sensitivity Label Management - Lazy loading enabled for tool discovery
-    this.server.tool(
-      "manage_sensitivity_labels",
-      sensitivityLabelSchema.shape,
-      wrapToolHandler(async (args: DLPSensitivityLabelArgs) => {
-        this.validateCredentials();
-        try {
-          return await handleDLPSensitivityLabels(this.getGraphClient(), args);
-        } catch (error) {
-          if (error instanceof McpError) {
-            throw error;
-          }
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-        }
-      })
-    );
-
     // Intune macOS Device Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_macos_devices",
+      "Manage macOS devices in Intune including enrollment, compliance policies, device actions, and inventory management.",
       intuneMacOSDeviceSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: IntuneMacOSDeviceArgs) => {
         this.validateCredentials();
         try {
@@ -670,7 +743,9 @@ export class M365CoreServer {
     // Intune macOS Policy Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_macos_policies",
+      "Manage macOS configuration profiles and compliance policies for device security and management settings.",
       intuneMacOSPolicySchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: IntuneMacOSPolicyArgs) => {
         this.validateCredentials();
         try {
@@ -690,7 +765,9 @@ export class M365CoreServer {
     // Intune macOS App Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_macos_apps",
+      "Manage macOS application deployment including app assignments, updates, and installation requirements.",
       intuneMacOSAppSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: IntuneMacOSAppArgs) => {
         this.validateCredentials();
         try {
@@ -710,7 +787,9 @@ export class M365CoreServer {
     // Intune macOS Compliance Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_macos_compliance",
+      "Assess macOS device compliance status and generate reports on policy adherence and security posture.",
       intuneMacOSComplianceSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: IntuneMacOSComplianceArgs) => {
         this.validateCredentials();
         try {
@@ -730,7 +809,9 @@ export class M365CoreServer {
     // Intune Windows Device Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_windows_devices",
+      "Manage Windows devices in Intune including enrollment, autopilot deployment, device actions, and health monitoring.",
       intuneWindowsDeviceSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: IntuneWindowsDeviceArgs) => {
         this.validateCredentials();
         try {
@@ -750,7 +831,9 @@ export class M365CoreServer {
     // Intune Windows Policy Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_windows_policies",
+      "Manage Windows configuration profiles and compliance policies including security baselines and update rings.",
       intuneWindowsPolicySchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: IntuneWindowsPolicyArgs) => {
         this.validateCredentials();
         try {
@@ -770,7 +853,9 @@ export class M365CoreServer {
     // Intune Windows App Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_windows_apps",
+      "Manage Windows application deployment including Win32 apps, Microsoft Store apps, and Office 365 assignments.",
       intuneWindowsAppSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
       wrapToolHandler(async (args: IntuneWindowsAppArgs) => {
         this.validateCredentials();
         try {
@@ -790,7 +875,9 @@ export class M365CoreServer {
     // Intune Windows Compliance Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_intune_windows_compliance",
+      "Assess Windows device compliance status including BitLocker encryption, antivirus status, and security configurations.",
       intuneWindowsComplianceSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: IntuneWindowsComplianceArgs) => {
         this.validateCredentials();
         try {
@@ -810,7 +897,9 @@ export class M365CoreServer {
     // Compliance Framework Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_compliance_frameworks",
+      "Manage compliance frameworks and standards including HIPAA, GDPR, SOX, PCI-DSS, ISO 27001, and NIST configurations.",
       complianceFrameworkSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: ComplianceFrameworkArgs) => {
         this.validateCredentials();
         try {
@@ -830,7 +919,9 @@ export class M365CoreServer {
     // Compliance Assessment Management - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_compliance_assessments",
+      "Conduct compliance assessments and generate detailed reports on regulatory adherence and security controls.",
       complianceAssessmentSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: ComplianceAssessmentArgs) => {
         this.validateCredentials();
         try {
@@ -850,7 +941,9 @@ export class M365CoreServer {
     // Compliance Monitoring - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_compliance_monitoring",
+      "Monitor ongoing compliance status with real-time alerts for policy violations and regulatory changes.",
       complianceMonitoringSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: ComplianceMonitoringArgs) => {
         this.validateCredentials();
         try {
@@ -870,7 +963,9 @@ export class M365CoreServer {
     // Evidence Collection - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_evidence_collection",
+      "Collect and preserve compliance evidence including audit logs, configuration snapshots, and attestation records.",
       evidenceCollectionSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: EvidenceCollectionArgs) => {
         this.validateCredentials();
         try {
@@ -890,7 +985,9 @@ export class M365CoreServer {
     // Gap Analysis - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_gap_analysis",
+      "Perform gap analysis to identify compliance deficiencies and generate remediation recommendations.",
       gapAnalysisSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: GapAnalysisArgs) => {
         this.validateCredentials();
         try {
@@ -910,7 +1007,9 @@ export class M365CoreServer {
     // Audit Reports - Lazy loading enabled for tool discovery
     this.server.tool(
       "generate_audit_reports",
+      "Generate comprehensive audit reports for compliance frameworks with evidence documentation and findings.",
       auditReportSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: AuditReportArgs) => {
         this.validateCredentials();
         try {
@@ -930,7 +1029,9 @@ export class M365CoreServer {
     // CIS Compliance - Lazy loading enabled for tool discovery
     this.server.tool(
       "manage_cis_compliance",
+      "Manage CIS (Center for Internet Security) benchmark compliance including assessment and remediation tracking.",
       cisComplianceSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: CISComplianceArgs) => {
         this.validateCredentials();
         try {
@@ -947,6 +1048,210 @@ export class M365CoreServer {
       })
     );
 
+    // ===== Microsoft 365 Policy Management Tools =====
+
+    // Retention Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_retention_policies",
+      "Manage retention policies for content across Exchange, SharePoint, OneDrive, and Teams with lifecycle rules.",
+      retentionPolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: RetentionPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleRetentionPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Sensitivity Label Management
+    const sensitivityLabelsMeta = getToolMetadata("manage_sensitivity_labels")!;
+    this.server.tool(
+      "manage_sensitivity_labels",
+      sensitivityLabelsMeta.description,
+      sensitivityLabelArgsSchema.shape,
+      sensitivityLabelsMeta.annotations || {},
+      wrapToolHandler(async (args: SensitivityLabelArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleSensitivityLabels(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Information Protection Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_information_protection_policies",
+      "Manage Azure Information Protection policies for data classification, encryption, and rights management.",
+      informationProtectionPolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: InformationProtectionPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleInformationProtectionPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Conditional Access Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_conditional_access_policies",
+      "Manage Azure AD conditional access policies for zero-trust security including MFA, device compliance, and location-based controls.",
+      conditionalAccessPolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: ConditionalAccessPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleConditionalAccessPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Microsoft Defender for Office 365 Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_defender_policies",
+      "Manage Microsoft Defender for Office 365 policies including Safe Attachments, Safe Links, anti-phishing, and anti-malware.",
+      defenderPolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: DefenderPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleDefenderPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Microsoft Teams Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_teams_policies",
+      "Manage Microsoft Teams policies for messaging, meetings, calling, apps, and live events across the organization.",
+      teamsPolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: TeamsPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleTeamsPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Exchange Online Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_exchange_policies",
+      "Manage Exchange Online policies including mail flow rules, mobile device access, and organization-wide settings.",
+      exchangePolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: ExchangePolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleExchangePolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // SharePoint Governance Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_sharepoint_governance_policies",
+      "Manage SharePoint governance policies including sharing controls, access restrictions, and site lifecycle management.",
+      sharePointGovernancePolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: SharePointGovernancePolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleSharePointGovernancePolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Security and Compliance Alert Policy Management - Lazy loading enabled for tool discovery
+    this.server.tool(
+      "manage_security_alert_policies",
+      "Manage security alert policies for monitoring threats, suspicious activities, and compliance violations across Microsoft 365.",
+      securityAlertPolicyArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: SecurityAlertPolicyArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleSecurityAlertPolicies(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Document Generation Tools
+    this.setupDocumentGenerationTools();
+
     // Advanced Graph API Features
     this.setupAdvancedGraphTools();
     
@@ -954,12 +1259,137 @@ export class M365CoreServer {
     this.setupDynamicTools();
   }
 
+  // Setup document generation tools
+  private setupDocumentGenerationTools(): void {
+    // PowerPoint Presentation Generation
+    this.server.tool(
+      "generate_powerpoint_presentation",
+      "Create professional PowerPoint presentations with custom slides, charts, tables, and themes from Microsoft 365 data.",
+      powerPointPresentationArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
+      wrapToolHandler(async (args: PowerPointPresentationArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handlePowerPointPresentations(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating PowerPoint presentation: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Word Document Generation
+    this.server.tool(
+      "generate_word_document",
+      "Create professional Word documents with formatted sections, tables, charts, and table of contents from analysis data.",
+      wordDocumentArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
+      wrapToolHandler(async (args: WordDocumentArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handleWordDocuments(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating Word document: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // HTML Report Generation
+    this.server.tool(
+      "generate_html_report",
+      "Create interactive HTML reports and dashboards with responsive design, charts, and filtering capabilities.",
+      htmlReportArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
+      wrapToolHandler(async (args: HTMLReportArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handleHTMLReports(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating HTML report: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Professional Report Generation (Multi-format)
+    this.server.tool(
+      "generate_professional_report",
+      "Generate comprehensive professional reports in multiple formats (PowerPoint, Word, HTML, PDF) from Microsoft 365 data.",
+      professionalReportArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
+      wrapToolHandler(async (args: ProfessionalReportArgs) => {
+        this.validateCredentials();
+        try {
+          const result = await handleProfessionalReports(args, this.getGraphClient());
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error generating professional report: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // OAuth Authorization
+    this.server.tool(
+      "oauth_authorize",
+      "Manage OAuth 2.0 authorization for user-delegated access to OneDrive and SharePoint files with secure token handling.",
+      oauthAuthorizationArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true},
+      wrapToolHandler(async (args: OAuthAuthorizationArgs) => {
+        try {
+          // OAuth doesn't require Graph client validation - it handles its own token management
+          const clientId = getEnvVar('MS_CLIENT_ID');
+          const clientSecret = getEnvVar('MS_CLIENT_SECRET');
+          const tenantId = getEnvVar('MS_TENANT_ID');
+          const redirectUri = getEnvVar('MS_REDIRECT_URI') || 'http://localhost:3000/auth/callback';
+          
+          const result = await handleOAuthAuthorization(args, clientId, clientSecret, tenantId, redirectUri);
+          return { content: [{ type: 'text', text: result }] };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error handling OAuth authorization: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+  }
+
   // Setup advanced Graph API tools
   private setupAdvancedGraphTools(): void {
     // Batch Operations
     this.server.tool(
       "execute_graph_batch",
+      "Execute multiple Microsoft Graph API requests in a single batch operation for improved performance and efficiency.",
       batchRequestSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":false,"idempotentHint":false},
       wrapToolHandler(async (args: any) => {
         this.validateCredentials();
         try {
@@ -981,7 +1411,9 @@ export class M365CoreServer {
     // Delta Queries
     this.server.tool(
       "execute_delta_query",
+      "Track incremental changes to Microsoft Graph resources using delta queries for efficient synchronization.",
       deltaQuerySchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: any) => {
         this.validateCredentials();
         try {
@@ -1001,14 +1433,17 @@ export class M365CoreServer {
     );
 
     // Webhook Subscriptions
+    const graphSubscriptionsMeta = getToolMetadata("manage_graph_subscriptions")!;
     this.server.tool(
       "manage_graph_subscriptions",
+      graphSubscriptionsMeta.description,
       z.object({
         action: z.enum(['create', 'update', 'delete', 'list']).describe('Subscription management action'),
         subscriptionId: z.string().optional().describe('Subscription ID for update/delete operations'),
         subscription: webhookSubscriptionSchema.optional().describe('Subscription details for create/update'),
         updates: webhookSubscriptionSchema.partial().optional().describe('Updates for existing subscription')
       }).shape,
+      graphSubscriptionsMeta.annotations || {},
       wrapToolHandler(async (args: any) => {
         this.validateCredentials();
         try {
@@ -1057,7 +1492,9 @@ export class M365CoreServer {
     // Advanced Search
     this.server.tool(
       "execute_graph_search",
+      "Execute advanced search queries across Microsoft 365 content including emails, files, messages, and calendar events.",
       searchQuerySchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
       wrapToolHandler(async (args: any) => {
         this.validateCredentials();
         try {
@@ -1134,8 +1571,8 @@ export class M365CoreServer {
   }
 
   private setupPrompts(): void {
-    // Register all M365 prompts
-    for (const prompt of m365Prompts) {
+    // Register all M365 prompts (general + Intune-specific)
+    for (const prompt of allM365Prompts) {
       // Convert arguments array to Zod schema shape required by MCP SDK
       const argsShape: Record<string, any> = {};
       if (prompt.arguments) {
@@ -1177,7 +1614,7 @@ export class M365CoreServer {
       );
     }
     
-    console.log(`✅ Registered ${m365Prompts.length} MCP prompts`);
+    console.log(`✅ Registered ${allM365Prompts.length} MCP prompts`);
   }
 
   // SSE and real-time capabilities

@@ -3,7 +3,7 @@ FROM node:lts-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies first (better layer caching)
 COPY package*.json ./
 RUN npm install --ignore-scripts
 
@@ -15,10 +15,15 @@ RUN npm run build
 
 # Set environment variables for HTTP transport
 ENV USE_HTTP=true
-ENV PORT=8081
+ENV PORT=8080
+ENV NODE_ENV=production
 
-# Expose port 8081 (Smithery standard)
-EXPOSE 8081
+# Expose port 8080 (Smithery standard for HTTP servers)
+EXPOSE 8080
+
+# Add healthcheck for container orchestration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Start the MCP server in HTTP mode
-CMD ["npm", "start"]
+CMD ["node", "build/index.js"]

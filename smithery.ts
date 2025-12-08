@@ -10,9 +10,9 @@ export const configSchema = z.object({
   msTenantId: z.string().describe('Microsoft Tenant ID for authentication'),
   msClientId: z.string().describe('Microsoft Client ID for authentication'),
   msClientSecret: z.string().describe('Microsoft Client Secret for authentication'),
-  useHttp: z.boolean().optional().describe('Use HTTP transport instead of stdio (default false)'),
+  useHttp: z.boolean().optional().describe('Use HTTP transport instead of stdio (default true for Smithery)'),
   stateless: z.boolean().optional().describe('Use stateless HTTP mode (default false)'),
-  port: z.number().optional().describe('Port for HTTP server (default 3000)'),
+  port: z.number().optional().describe('Port for HTTP server (default 8080)'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).optional().describe('Log level (default info)')
 });
 

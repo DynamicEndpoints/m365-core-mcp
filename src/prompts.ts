@@ -1,4 +1,5 @@
 import { Client } from '@microsoft/microsoft-graph-client';
+import { intunePolicyPrompts } from './prompts-intune-policy-guide.js';
 
 /**
  * MCP Prompts for Microsoft 365
@@ -1034,6 +1035,417 @@ Provide:
 **Focus Area**: ${focus}
 **Assessment Date**: ${new Date().toISOString().split('T')[0]}`;
     }
+  },
+
+  // ===== DOCUMENT GENERATION PROMPTS =====
+  {
+    name: 'generate_client_report',
+    description: 'Generate a comprehensive professional report for clients based on Microsoft 365 data analysis',
+    arguments: [
+      {
+        name: 'report_type',
+        description: 'Type of report: security, compliance, audit, governance, or custom (default: custom)',
+        required: false
+      },
+      {
+        name: 'format',
+        description: 'Output format: powerpoint, word, html, or all (default: all)',
+        required: false
+      },
+      {
+        name: 'client_name',
+        description: 'Client/organization name for the report',
+        required: false
+      }
+    ],
+    handler: async (graphClient, args) => {
+      const reportType = args?.report_type || 'custom';
+      const format = args?.format || 'all';
+      const clientName = args?.client_name || 'Client Organization';
+
+      return `# Professional Client Report Generation
+
+## Objective
+Generate a comprehensive ${reportType} report for ${clientName} in ${format} format(s), leveraging Microsoft 365 data and analysis.
+
+## Report Structure
+
+### 1. Executive Summary
+- High-level overview of findings
+- Key metrics and KPIs
+- Critical recommendations
+- ROI and business impact
+
+### 2. Detailed Analysis
+**For Security Reports:**
+- Security posture assessment
+- Threat landscape analysis
+- Vulnerability identification
+- Incident response readiness
+
+**For Compliance Reports:**
+- Regulatory compliance status
+- Policy effectiveness
+- Gap analysis
+- Remediation roadmap
+
+**For Audit Reports:**
+- Access controls review
+- Configuration analysis
+- Change tracking
+- Compliance verification
+
+**For Governance Reports:**
+- Governance framework assessment
+- Policy enforcement
+- User behavior analysis
+- Best practices alignment
+
+### 3. Data Visualization
+- Charts and graphs for key metrics
+- Trend analysis over time
+- Comparative benchmarks
+- Heat maps for risk areas
+
+### 4. Recommendations
+- Prioritized action items
+- Implementation guidance
+- Timeline and milestones
+- Cost-benefit analysis
+
+## Document Generation Tools
+
+**PowerPoint Presentations:**
+\`\`\`
+generate_powerpoint_presentation
+- action: create
+- title: "${clientName} - ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Assessment"
+- slides: [executive_summary, findings, recommendations, next_steps]
+- theme: professional (use template_id for custom branding)
+\`\`\`
+
+**Word Documents:**
+\`\`\`
+generate_word_document
+- action: create
+- title: "Detailed ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report - ${clientName}"
+- sections: [cover, executive_summary, methodology, findings, analysis, recommendations, appendix]
+- include_toc: true
+- include_charts: true
+\`\`\`
+
+**HTML Reports:**
+\`\`\`
+generate_html_report
+- action: create
+- title: "Interactive ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Dashboard"
+- theme: professional
+- sections: [overview, metrics, charts, details, recommendations]
+- interactive: true (includes filtering and drill-down)
+\`\`\`
+
+**Multi-Format Professional Report:**
+\`\`\`
+generate_professional_report
+- report_type: ${reportType}
+- data_sources: [security_alerts, compliance_status, audit_logs, user_activity]
+- formats: [${format === 'all' ? 'powerpoint, word, html, pdf' : format}]
+- include_charts: true
+- include_recommendations: true
+\`\`\`
+
+## Data Collection
+
+Use these tools to gather data for the report:
+
+**Security Data:**
+- \`manage_alerts\` - Security alerts and incidents
+- \`manage_defender_policies\` - Threat protection status
+- \`manage_conditional_access_policies\` - Access control policies
+- \`search_audit_log\` - Security audit events
+
+**Compliance Data:**
+- \`manage_dlp_policies\` - Data loss prevention status
+- \`manage_retention_policies\` - Retention and archival policies
+- \`manage_information_protection_policies\` - Information protection status
+- \`manage_sensitivity_labels\` - Label usage and adoption
+
+**Governance Data:**
+- \`manage_teams_policies\` - Teams governance policies
+- \`manage_exchange_policies\` - Exchange governance settings
+- \`manage_sharepoint_governance_policies\` - SharePoint governance
+- \`manage_security_alert_policies\` - Alert configuration
+
+**Device & Endpoint Data:**
+- \`manage_intune_windows_compliance\` - Windows device compliance
+- \`manage_intune_macos_compliance\` - macOS device compliance
+- \`manage_azure_ad_devices\` - Device registration status
+
+## Output Deliverables
+
+1. **Executive PowerPoint** (10-15 slides)
+   - Professional design with charts
+   - Key findings highlighted
+   - Ready for stakeholder presentation
+
+2. **Detailed Word Document** (15-30 pages)
+   - Comprehensive analysis
+   - Supporting data and evidence
+   - Actionable recommendations
+   - Technical appendices
+
+3. **Interactive HTML Dashboard**
+   - Real-time metrics
+   - Interactive charts
+   - Filterable data tables
+   - Exportable views
+
+4. **PDF Summary** (if requested)
+   - Printable format
+   - All visualizations included
+   - Professional formatting
+
+## Best Practices
+
+- Use consistent branding and styling
+- Include data timestamps and report date
+- Provide context for all metrics
+- Use visualizations for complex data
+- Include executive summary for non-technical audiences
+- Add glossary for technical terms
+- Include references and methodology
+- Ensure all data is current (last 24-48 hours)
+
+---
+
+**Report Type**: ${reportType}
+**Format(s)**: ${format}
+**Client**: ${clientName}
+**Generation Date**: ${new Date().toISOString().split('T')[0]}`;
+    }
+  },
+
+  // ===== POLICY MANAGEMENT PROMPTS =====
+  {
+    name: 'policy_management_guide',
+    description: 'Comprehensive guide for managing Microsoft 365 policies across security, compliance, and governance',
+    arguments: [
+      {
+        name: 'policy_area',
+        description: 'Policy area: security, compliance, teams, exchange, sharepoint, or all (default: all)',
+        required: false
+      },
+      {
+        name: 'action',
+        description: 'Action to perform: review, create, update, delete, or audit (default: review)',
+        required: false
+      }
+    ],
+    handler: async (graphClient, args) => {
+      const policyArea = args?.policy_area || 'all';
+      const action = args?.action || 'review';
+
+      return `# Microsoft 365 Policy Management Guide
+
+## Objective
+${action.charAt(0).toUpperCase() + action.slice(1)} ${policyArea === 'all' ? 'all Microsoft 365 policies' : policyArea + ' policies'} to ensure proper security, compliance, and governance.
+
+## Policy Areas
+
+### 1. Security Policies
+
+**Conditional Access Policies:**
+\`\`\`
+manage_conditional_access_policies
+- action: ${action}
+- policy_types: [location_based, device_based, risk_based, mfa_requirement]
+- scope: users, groups, applications
+\`\`\`
+
+**Defender Policies:**
+\`\`\`
+manage_defender_policies
+- action: ${action}
+- policy_types: [anti_phishing, anti_malware, safe_attachments, safe_links]
+- applies_to: exchange, sharepoint, teams
+\`\`\`
+
+**Security Alert Policies:**
+\`\`\`
+manage_security_alert_policies
+- action: ${action}
+- alert_types: [suspicious_activity, data_exfiltration, privilege_escalation]
+- notification_channels: email, webhook, siem
+\`\`\`
+
+### 2. Compliance Policies
+
+**Retention Policies:**
+\`\`\`
+manage_retention_policies
+- action: ${action}
+- scope: [exchange, sharepoint, onedrive, teams]
+- retention_period: days, months, years
+- actions: retain, delete, retain_then_delete
+\`\`\`
+
+**Information Protection Policies:**
+\`\`\`
+manage_information_protection_policies
+- action: ${action}
+- protection_types: [encryption, rights_management, classification]
+- scope: documents, emails, sites
+\`\`\`
+
+**DLP Policies:**
+\`\`\`
+manage_dlp_policies
+- action: ${action}
+- content_types: [credit_cards, ssn, phi, pii, custom_patterns]
+- locations: [exchange, sharepoint, onedrive, teams, devices]
+\`\`\`
+
+### 3. Collaboration Governance
+
+**Teams Policies:**
+\`\`\`
+manage_teams_policies
+- action: ${action}
+- policy_types: [messaging, meeting, calling, app_permission, live_events]
+- assignment: users, groups, org_wide
+\`\`\`
+
+**Exchange Policies:**
+\`\`\`
+manage_exchange_policies
+- action: ${action}
+- policy_types: [mail_flow, mobile_device, sharing, retention, address_book]
+- scope: organization, distribution_lists, mailboxes
+\`\`\`
+
+**SharePoint Governance:**
+\`\`\`
+manage_sharepoint_governance_policies
+- action: ${action}
+- policy_types: [sharing, access_control, site_lifecycle, storage_limits]
+- applies_to: tenant, site_collections, sites
+\`\`\`
+
+## Policy Management Workflow
+
+### Review Phase
+1. List all existing policies in the selected area
+2. Check policy effectiveness and coverage
+3. Identify gaps and conflicts
+4. Review compliance with requirements
+5. Analyze policy violations and incidents
+
+### Create Phase
+1. Define policy objectives and scope
+2. Configure policy settings and conditions
+3. Set appropriate actions (allow, block, audit)
+4. Define exclusions and exceptions
+5. Test policy in audit mode first
+6. Deploy to production with monitoring
+
+### Update Phase
+1. Review current policy configuration
+2. Identify needed changes based on:
+   - New threats or risks
+   - Business requirement changes
+   - Compliance updates
+   - Incident learnings
+3. Update policy settings
+4. Communicate changes to stakeholders
+5. Monitor impact after changes
+
+### Audit Phase
+1. Export all policies for documentation
+2. Check policy compliance with standards
+3. Review policy violation logs
+4. Generate compliance reports
+5. Identify optimization opportunities
+
+## Best Practices
+
+**General:**
+- Use descriptive policy names
+- Document policy purpose and scope
+- Test policies before enforcement
+- Start with audit/monitor mode
+- Gradually expand coverage
+- Regular policy reviews (quarterly)
+- Maintain policy documentation
+
+**Security Policies:**
+- Implement least privilege access
+- Enable MFA for all users
+- Use risk-based policies
+- Monitor policy exceptions
+- Regular security reviews
+
+**Compliance Policies:**
+- Align with regulatory requirements
+- Implement defense in depth
+- Document retention rationale
+- Regular compliance audits
+- Track policy violations
+
+**Governance Policies:**
+- Balance security with usability
+- Involve stakeholders in design
+- Clear communication to users
+- Provide training and guidance
+- Monitor adoption and effectiveness
+
+## Common Policy Scenarios
+
+**Scenario 1: Remote Work Security**
+1. Conditional access for trusted locations
+2. Device compliance requirements
+3. MFA for external access
+4. App protection policies
+
+**Scenario 2: Data Protection**
+1. DLP policies for sensitive data
+2. Encryption for confidential content
+3. Sharing restrictions
+4. External collaboration controls
+
+**Scenario 3: Compliance Requirements**
+1. Retention policies per regulation
+2. Legal hold capabilities
+3. Audit logging and monitoring
+4. eDiscovery readiness
+
+**Scenario 4: Collaboration Governance**
+1. Teams creation restrictions
+2. Guest access policies
+3. Site lifecycle management
+4. Storage quotas and limits
+
+## Monitoring & Reporting
+
+After policy changes, monitor:
+- Policy match rates
+- User impact and feedback
+- False positives/negatives
+- Incident reduction
+- Compliance improvements
+
+Generate reports showing:
+- Policy coverage by area
+- Violation trends over time
+- Top policy triggers
+- Effectiveness metrics
+- Recommendations for optimization
+
+---
+
+**Policy Area**: ${policyArea}
+**Action**: ${action}
+**Assessment Date**: ${new Date().toISOString().split('T')[0]}`;
+    }
   }
 ];
 
@@ -1048,9 +1460,17 @@ export function getPromptByName(name: string): PromptHandler | undefined {
  * List all available prompts
  */
 export function listPrompts(): Array<{ name: string; description: string; arguments?: Array<{ name: string; description: string; required: boolean }> }> {
-  return m365Prompts.map(p => ({
+  // Combine all prompts (general M365 + Intune-specific)
+  const allPrompts = [...m365Prompts, ...intunePolicyPrompts];
+  
+  return allPrompts.map(p => ({
     name: p.name,
     description: p.description,
     arguments: p.arguments
   }));
 }
+
+/**
+ * Export combined prompts for server registration
+ */
+export const allM365Prompts = [...m365Prompts, ...intunePolicyPrompts];
