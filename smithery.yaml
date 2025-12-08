@@ -49,9 +49,11 @@ startCommand:
     stateless: false
     logLevel: "info"
 
-# Tool discovery metadata for Smithery
+# ============================================
+# TOOL DISCOVERY METADATA FOR SMITHERY
+# ============================================
 tools:
-  # Core M365 Management Tools
+  # ===== CORE M365 MANAGEMENT TOOLS =====
   - name: manage_distribution_lists
     description: Manage Microsoft 365 distribution lists - create, update, delete, and manage membership
     category: Microsoft 365
@@ -82,6 +84,7 @@ tools:
     category: User Management
     tags: [offboarding, security, data-transfer, lifecycle]
 
+  # ===== SHAREPOINT TOOLS =====
   - name: manage_sharepoint_sites
     description: Manage SharePoint sites - create, configure, and manage site settings and permissions
     category: SharePoint
@@ -92,6 +95,7 @@ tools:
     category: SharePoint
     tags: [sharepoint, lists, data-management, content]
 
+  # ===== AZURE AD MANAGEMENT TOOLS =====
   - name: manage_azure_ad_roles
     description: Manage Azure AD directory roles - assign, remove, and list role assignments
     category: Azure AD
@@ -112,11 +116,13 @@ tools:
     category: Azure AD
     tags: [service-principals, applications, azure-ad, automation]
 
+  # ===== API ACCESS TOOLS =====
   - name: call_microsoft_api
     description: Dynamic API endpoint for calling any Microsoft Graph or Azure Resource Management API
     category: API Access
     tags: [graph-api, azure-api, dynamic, automation]
 
+  # ===== SECURITY & COMPLIANCE TOOLS =====
   - name: search_audit_log
     description: Search and analyze Azure AD unified audit logs for compliance and security monitoring
     category: Security & Compliance
@@ -127,7 +133,7 @@ tools:
     category: Security & Compliance
     tags: [security-alerts, incident-response, monitoring, threat-detection]
 
-  # DLP and Information Protection Tools
+  # ===== DLP AND INFORMATION PROTECTION TOOLS =====
   - name: manage_dlp_policies
     description: Manage Data Loss Prevention policies across Microsoft 365 services
     category: Security & Compliance
@@ -168,7 +174,7 @@ tools:
     category: Security & Compliance
     tags: [security-alerts, notifications, monitoring, incident-response]
 
-  # Intune macOS Management Tools
+  # ===== INTUNE MACOS MANAGEMENT TOOLS =====
   - name: manage_intune_macos_devices
     description: Manage macOS devices in Microsoft Intune - enrollment, compliance, and device actions
     category: Device Management
@@ -189,7 +195,28 @@ tools:
     category: Device Management
     tags: [intune, macos, compliance, assessment, reporting]
 
-  # Compliance Framework Tools
+  # ===== INTUNE WINDOWS MANAGEMENT TOOLS =====
+  - name: manage_intune_windows_devices
+    description: Manage Windows devices in Microsoft Intune - enrollment, autopilot, and device actions
+    category: Device Management
+    tags: [intune, windows, device-management, mdm, autopilot]
+
+  - name: manage_intune_windows_policies
+    description: Manage Windows configuration profiles and security baselines in Intune
+    category: Device Management
+    tags: [intune, windows, policies, configuration, security-baselines]
+
+  - name: manage_intune_windows_apps
+    description: Manage Windows application deployment - Win32, Store, Office 365 apps through Intune
+    category: Device Management
+    tags: [intune, windows, applications, app-deployment, win32]
+
+  - name: manage_intune_windows_compliance
+    description: Assess Windows device compliance including BitLocker, antivirus, and security configurations
+    category: Device Management
+    tags: [intune, windows, compliance, bitlocker, security]
+
+  # ===== COMPLIANCE FRAMEWORK TOOLS =====
   - name: manage_compliance_frameworks
     description: Manage compliance frameworks (HITRUST, ISO27001, SOC2, CIS) and their configurations
     category: Security & Compliance
@@ -225,28 +252,23 @@ tools:
     category: Security & Compliance
     tags: [cis, benchmarks, security, compliance, assessment]
 
-  # Intune Windows Management Tools
-  - name: manage_intune_windows_devices
-    description: Manage Windows devices in Microsoft Intune - enrollment, compliance, and device actions
-    category: Device Management
-    tags: [intune, windows, device-management, mdm]
+  # ===== POLICY MANAGEMENT TOOLS =====
+  - name: manage_teams_policies
+    description: Manage Microsoft Teams policies including messaging, meeting, and calling policies
+    category: Microsoft Teams
+    tags: [teams, policies, governance, collaboration, configuration]
 
-  - name: manage_intune_windows_policies
-    description: Manage Windows configuration and compliance policies in Intune
-    category: Device Management
-    tags: [intune, windows, policies, configuration, compliance]
+  - name: manage_exchange_policies
+    description: Manage Exchange Online policies including mail flow, retention, and mobile device policies
+    category: Exchange Online
+    tags: [exchange, email, policies, mail-flow, governance]
 
-  - name: manage_intune_windows_apps
-    description: Manage Windows application deployment and management through Intune
-    category: Device Management
-    tags: [intune, windows, applications, app-deployment]
+  - name: manage_sharepoint_governance_policies
+    description: Manage SharePoint governance policies including sharing, access, and site policies
+    category: SharePoint
+    tags: [sharepoint, governance, policies, sharing, access-control]
 
-  - name: manage_intune_windows_compliance
-    description: Assess and manage Windows device compliance with organizational policies
-    category: Device Management
-    tags: [intune, windows, compliance, assessment, reporting]
-
-  # Advanced Graph API Tools
+  # ===== ADVANCED GRAPH API TOOLS =====
   - name: execute_graph_batch
     description: Execute multiple Graph API requests in a single batch operation for improved performance
     category: Advanced API
@@ -267,30 +289,14 @@ tools:
     category: Advanced API
     tags: [graph-api, search, content-discovery, advanced-queries]
 
-  # Policy Management Tools
-  - name: manage_teams_policies
-    description: Manage Microsoft Teams policies including messaging, meeting, and calling policies
-    category: Microsoft Teams
-    tags: [teams, policies, governance, collaboration, configuration]
-
-  - name: manage_exchange_policies
-    description: Manage Exchange Online policies including mail flow, retention, and mobile device policies
-    category: Exchange Online
-    tags: [exchange, email, policies, mail-flow, governance]
-
-  - name: manage_sharepoint_governance_policies
-    description: Manage SharePoint governance policies including sharing, access, and site policies
-    category: SharePoint
-    tags: [sharepoint, governance, policies, sharing, access-control]
-
-  # Document Generation Tools
+  # ===== DOCUMENT GENERATION TOOLS =====
   - name: generate_powerpoint_presentation
-    description: Create, retrieve, list, or export PowerPoint presentations with custom slides, charts, and templates
+    description: Create PowerPoint presentations with custom slides, charts, and templates from M365 data
     category: Document Generation
     tags: [powerpoint, presentations, documents, office, reporting]
 
   - name: generate_word_document
-    description: Create, retrieve, list, or export Word documents with sections, tables, and professional formatting
+    description: Create Word documents with sections, tables, and professional formatting
     category: Document Generation
     tags: [word, documents, reports, office, documentation]
 
@@ -300,7 +306,7 @@ tools:
     tags: [html, reports, dashboards, visualization, web]
 
   - name: generate_professional_report
-    description: Generate comprehensive multi-format reports from Microsoft 365 data in PowerPoint, Word, HTML, and PDF
+    description: Generate comprehensive multi-format reports from Microsoft 365 data (PowerPoint, Word, HTML, PDF)
     category: Document Generation
     tags: [reports, analytics, multi-format, automation, business-intelligence]
 
@@ -309,75 +315,163 @@ tools:
     category: Authentication
     tags: [oauth, authentication, authorization, security, file-access]
 
-  # Dynamic Graph API Tools (Generated at Runtime)
-  - name: manage_teams_resources
-    description: Dynamically manage Microsoft Teams resources - teams, channels, messages, meetings
-    category: Microsoft Teams
-    tags: [teams, collaboration, channels, meetings, dynamic]
-
-  - name: manage_productivity_resources
-    description: Dynamically manage productivity resources - OneNote, Planner, To Do, Bookings
-    category: Productivity
-    tags: [onenote, planner, todo, bookings, productivity, dynamic]
-
-  - name: manage_security_resources
-    description: Dynamically manage advanced security resources - incidents, threat intelligence
-    category: Advanced Security
-    tags: [security, incidents, threat-intelligence, defender, dynamic]
-
-  - name: manage_analytics_resources
-    description: Dynamically manage analytics and reporting resources - usage reports, insights
-    category: Analytics & Reporting
-    tags: [analytics, reports, insights, usage, dynamic]
-
-# Resource discovery metadata
+# ============================================
+# RESOURCE DISCOVERY METADATA
+# ============================================
 resources:
-  - name: current_user
-    description: Information about the currently authenticated user
-    uri: m365://user/me
+  # ===== SECURITY RESOURCES =====
+  - name: security_alerts
+    description: Current security alerts from Microsoft Defender and security products
+    uri: m365://security/alerts
 
-  - name: tenant_info
-    description: Microsoft 365 tenant information and configuration
-    uri: m365://tenant/info
+  - name: security_incidents
+    description: Active security incidents requiring attention
+    uri: m365://security/incidents
 
+  - name: conditional_access_policies
+    description: Conditional access policies and their configuration
+    uri: m365://security/conditional-access
+
+  - name: identity_protection
+    description: Identity protection risk detections and risky users
+    uri: m365://security/identity-protection
+
+  - name: threat_assessment
+    description: Threat assessment summary and Microsoft Secure Score
+    uri: m365://security/threat-assessment
+
+  # ===== COMPLIANCE RESOURCES =====
+  - name: compliance_policies
+    description: DLP policies, retention policies, and compliance configurations
+    uri: m365://compliance/policies
+
+  - name: audit_summary
+    description: Recent audit log activity summary
+    uri: m365://compliance/audit-summary
+
+  - name: sensitivity_labels
+    description: Information protection sensitivity labels and policies
+    uri: m365://compliance/sensitivity-labels
+
+  # ===== DEVICE MANAGEMENT RESOURCES =====
+  - name: devices_overview
+    description: Overview of all managed devices across platforms
+    uri: m365://devices/overview
+
+  - name: device_compliance
+    description: Compliance status of managed devices
+    uri: m365://devices/compliance
+
+  - name: intune_policies
+    description: Device configuration and compliance policies
+    uri: m365://devices/intune-policies
+
+  - name: managed_apps
+    description: Applications managed through Intune
+    uri: m365://devices/apps
+
+  # ===== USER & IDENTITY RESOURCES =====
+  - name: user_directory
+    description: All users in the organization with key attributes
+    uri: m365://users/directory
+
+  - name: user_licenses
+    description: License assignments across users
+    uri: m365://users/licenses
+
+  - name: privileged_users
+    description: Users with administrative roles
+    uri: m365://users/privileged
+
+  # ===== GROUP RESOURCES =====
+  - name: all_groups
+    description: All groups in the organization
+    uri: m365://groups/all
+
+  - name: teams_groups
+    description: Groups with Teams enabled
+    uri: m365://groups/teams
+
+  # ===== SHAREPOINT RESOURCES =====
   - name: sharepoint_sites
     description: List of SharePoint sites in the organization
     uri: m365://sharepoint/sites
 
-  - name: sharepoint_admin_settings
-    description: SharePoint admin settings and configuration
-    uri: m365://sharepoint/admin/settings
+  - name: sharepoint_permissions
+    description: External sharing permissions across sites
+    uri: m365://sharepoint/permissions
 
-  - name: user_info
-    description: Detailed information about a specific user
-    uri: m365://users/{userId}
+  # ===== EXCHANGE RESOURCES =====
+  - name: exchange_mailboxes
+    description: User mailboxes in Exchange Online
+    uri: m365://exchange/mailboxes
 
-  - name: group_info
-    description: Information about a specific group
-    uri: m365://groups/{groupId}
+  - name: transport_rules
+    description: Mail flow transport rules
+    uri: m365://exchange/transport-rules
 
-  - name: device_info
-    description: Information about a specific device
-    uri: m365://devices/{deviceId}
+  # ===== COLLABORATION RESOURCES =====
+  - name: teams_activity
+    description: Microsoft Teams activity reports
+    uri: m365://collaboration/teams-activity
 
-  # Document Generation Resources
-  - name: documents_presentations
-    description: List of PowerPoint presentations in user's OneDrive
+  - name: onedrive_usage
+    description: OneDrive usage reports
+    uri: m365://collaboration/onedrive-usage
+
+  # ===== APPLICATION RESOURCES =====
+  - name: app_registrations
+    description: Azure AD application registrations
+    uri: m365://applications/registrations
+
+  - name: service_principals
+    description: Enterprise application service principals
+    uri: m365://applications/service-principals
+
+  - name: app_consent
+    description: Application consent grants
+    uri: m365://applications/consent
+
+  # ===== GOVERNANCE RESOURCES =====
+  - name: access_reviews
+    description: Access review definitions
+    uri: m365://governance/access-reviews
+
+  - name: entitlement_management
+    description: Entitlement management catalogs
+    uri: m365://governance/entitlement
+
+  # ===== TENANT RESOURCES =====
+  - name: organization_info
+    description: Organization details and tenant info
+    uri: m365://tenant/organization
+
+  - name: tenant_domains
+    description: Registered domains
+    uri: m365://tenant/domains
+
+  - name: tenant_subscriptions
+    description: License subscriptions
+    uri: m365://tenant/subscriptions
+
+  # ===== DOCUMENT RESOURCES =====
+  - name: presentations
+    description: PowerPoint presentations in OneDrive
     uri: m365://documents/presentations
 
-  - name: documents_word_documents
-    description: List of Word documents in user's OneDrive
+  - name: word_documents
+    description: Word documents in OneDrive
     uri: m365://documents/word-documents
 
-  - name: documents_reports
-    description: List of generated reports and analysis documents
+  - name: generated_reports
+    description: Generated reports and analysis documents
     uri: m365://documents/reports
 
-  - name: documents_templates
+  - name: document_templates
     description: Available document templates for report generation
     uri: m365://documents/templates
 
-  # Policy Management Resources
+  # ===== POLICY RESOURCES =====
   - name: policies_conditional_access
     description: All conditional access policies and their current state
     uri: m365://policies/conditional-access
@@ -414,8 +508,11 @@ resources:
     description: Summary of all policies across Microsoft 365
     uri: m365://policies/overview
 
-# Prompt templates for common tasks
+# ============================================
+# PROMPT TEMPLATES FOR COMMON TASKS
+# ============================================
 prompts:
+  # ===== SECURITY PROMPTS =====
   - name: security_assessment
     description: Comprehensive security posture analysis with recommendations for Microsoft 365 environment
     arguments:
@@ -426,56 +523,48 @@ prompts:
         description: "Minimum severity to include: low, medium, high, critical (default: medium)"
         required: false
 
-  - name: compliance_audit
-    description: Detailed compliance audit across Microsoft 365 services with gap analysis
+  # ===== COMPLIANCE PROMPTS =====
+  - name: compliance_review
+    description: Framework-specific compliance gap analysis for SOC2, ISO27001, NIST, GDPR, HIPAA, or CIS
     arguments:
       - name: framework
-        description: "Compliance framework: hipaa, gdpr, sox, pci, iso27001, nist, or custom (default: custom)"
-        required: false
+        description: "Compliance framework: soc2, iso27001, nist, gdpr, hipaa, cis (required)"
+        required: true
       - name: scope
-        description: "Audit scope: email, sharepoint, teams, devices, or all (default: all)"
+        description: Specific controls or domains to focus on (optional)
         required: false
 
-  - name: device_management_report
-    description: Comprehensive device management and compliance report for Intune-managed devices
+  # ===== USER ACCESS PROMPTS =====
+  - name: user_access_review
+    description: Individual or organization-wide access rights analysis and recommendations
+    arguments:
+      - name: user_id
+        description: "Specific user to review (UPN or Object ID), or 'all' for org-wide review"
+        required: false
+      - name: focus
+        description: "Focus area: roles, groups, applications, external, or all (default: all)"
+        required: false
+
+  # ===== DEVICE MANAGEMENT PROMPTS =====
+  - name: device_compliance_analysis
+    description: Intune device management and compliance assessment with remediation guidance
     arguments:
       - name: platform
-        description: "Device platform: windows, macos, ios, android, or all (default: all)"
+        description: "Platform to analyze: windows, macos, ios, android, or all (default: all)"
         required: false
-      - name: include_apps
-        description: "Include application inventory: true or false (default: false)"
-        required: false
-
-  - name: user_provisioning_guide
-    description: Step-by-step guide for new user provisioning and configuration
-    arguments:
-      - name: user_type
-        description: "Type of user: employee, contractor, guest (default: employee)"
-        required: false
-      - name: department
-        description: Department or business unit for role-based setup
+      - name: compliance_state
+        description: "Filter by state: compliant, non-compliant, in-grace-period, or all (default: all)"
         required: false
 
-  - name: collaboration_governance_assessment
-    description: Assessment of Teams and SharePoint collaboration governance with policy recommendations
+  # ===== COLLABORATION PROMPTS =====
+  - name: collaboration_governance
+    description: Microsoft Teams and SharePoint governance analysis with policy recommendations
     arguments:
       - name: focus
-        description: "Focus area: teams, sharepoint, or both (default: both)"
+        description: "Focus area: teams, sharepoint, external-access, lifecycle, or all (default: all)"
         required: false
 
-  - name: intune_policy_configuration_guide
-    description: Interactive guide for configuring Intune policies for different platforms and scenarios
-    arguments:
-      - name: platform
-        description: "Target platform: windows, macos, ios, android"
-        required: true
-      - name: policy_type
-        description: "Policy type: compliance, configuration, app_protection, app_configuration"
-        required: true
-      - name: use_case
-        description: Use case or scenario for the policy
-        required: false
-
+  # ===== DOCUMENT GENERATION PROMPTS =====
   - name: generate_client_report
     description: Generate a comprehensive professional report for clients based on Microsoft 365 data analysis
     arguments:
@@ -489,6 +578,7 @@ prompts:
         description: Client/organization name for the report
         required: false
 
+  # ===== POLICY MANAGEMENT PROMPTS =====
   - name: policy_management_guide
     description: Comprehensive guide for managing Microsoft 365 policies across security, compliance, and governance
     arguments:
@@ -497,5 +587,29 @@ prompts:
         required: false
       - name: action
         description: "Action to perform: review, create, update, delete, or audit (default: review)"
+        required: false
+
+  # ===== INTUNE POLICY PROMPTS =====
+  - name: intune_policy_wizard
+    description: Interactive wizard for creating Intune policies with best practice configurations
+    arguments:
+      - name: policy_goal
+        description: "What you want to achieve (e.g., encrypt devices, enforce passwords, deploy apps)"
+        required: true
+      - name: platform
+        description: "Target platform: windows, macos, ios, android"
+        required: true
+      - name: security_level
+        description: "Security level: basic, standard, high (default: standard)"
+        required: false
+
+  - name: intune_policy_troubleshoot
+    description: Troubleshoot Intune policy deployment issues with step-by-step diagnostics
+    arguments:
+      - name: issue_description
+        description: Description of the policy issue or error
+        required: true
+      - name: policy_type
+        description: "Type of policy: compliance, configuration, app, update"
         required: false
 
