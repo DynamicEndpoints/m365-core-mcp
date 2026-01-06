@@ -1,9 +1,15 @@
 /**
  * Smithery TypeScript configuration for M365 Core MCP Server
  * https://smithery.ai/docs/build/deployments#typescript-deploy
+ * 
+ * Implements latest MCP SDK and Smithery authentication patterns:
+ * - OAuth provider export for automatic endpoint mounting
+ * - AuthInfo injection into createServer
+ * - Type-safe configuration with Zod
  */
 
 import { z } from 'zod';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 
 // Configuration schema for Smithery
 export const configSchema = z.object({
@@ -381,10 +387,52 @@ export const resources = [
   }
 ];
 
-// Server factory function for Smithery
-export async function createServer(config: z.infer<typeof configSchema>) {
+/**
+ * Server factory function for Smithery - MUST be default export
+ * 
+ * Per MCP SDK and Smithery best practices:
+ * - Receives config object with validated configuration
+ * - Can optionally receive auth object with AuthInfo
+ * - Sets up environment and returns server instance
+ */
+export default async function createServer({ 
+  config, 
+  auth 
+}: { 
+  config: z.infer<typeof configSchema>;
+  auth?: AuthInfo;
+}) {
+  // Set environment variables from Smithery config
+  if (config.msTenantId) process.env.MS_TENANT_ID = config.msTenantId;
+  if (config.msClientId) process.env.MS_CLIENT_ID = config.msClientId;
+  if (config.msClientSecret) process.env.MS_CLIENT_SECRET = config.msClientSecret;
+  if (config.useHttp !== undefined) process.env.USE_HTTP = config.useHttp.toString();
+  if (config.stateless !== undefined) process.env.STATELESS = config.stateless.toString();
+  if (config.port) process.env.PORT = config.port.toString();
+  if (config.logLevel) process.env.LOG_LEVEL = config.logLevel;
+
+  // Log auth info if provided (useful for debugging)
+  if (auth) {
+    console.log(`Authenticated user: ${auth.clientId || 'unknown'}`);
+  }
+
   // Dynamic import at runtime to avoid compilation issues
-  const module = await import('./build/server.js');
+  const module = await import('./src/server.js');
   const { M365CoreServer } = module;
-  return new M365CoreServer();
+  const server = new M365CoreServer();
+  
+  // Return the underlying server for Smithery
+  return server.server;
 }
+
+/**
+ * OAuth Provider Export for Smithery CLI
+ * 
+ * When exported, Smithery CLI automatically mounts OAuth endpoints:
+ * - GET /oauth/authorize - Redirect to authorization
+ * - POST /oauth/token - Token exchange
+ * - GET /.well-known/oauth-authorization-server - Metadata
+ * 
+ * @see https://smithery.ai/docs/build/deployments/typescript
+ */
+export { M365OAuthProvider as oauth } from './src/auth/oauth-provider.js';

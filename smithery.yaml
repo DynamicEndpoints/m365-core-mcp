@@ -1,4 +1,5 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Updated with MCP SDK and Smithery latest authentication best practices
 
 # Use container runtime for HTTP transport
 runtime: "container"
@@ -24,15 +25,23 @@ startCommand:
       msTenantId:
         type: string
         title: "Microsoft Tenant ID"
-        description: Microsoft Tenant ID for authentication
+        description: Microsoft Entra ID (Azure AD) tenant ID for authentication
+        format: uuid
       msClientId:
         type: string
         title: "Microsoft Client ID"
-        description: Microsoft Client ID for authentication
+        description: Microsoft Entra ID application (client) ID
+        format: uuid
       msClientSecret:
         type: string
         title: "Microsoft Client Secret"
-        description: Microsoft Client Secret for authentication
+        description: Microsoft Entra ID application client secret (keep secure!)
+        writeOnly: true
+      msRedirectUri:
+        type: string
+        title: "OAuth Redirect URI"
+        description: OAuth 2.0 redirect URI for user consent flow (optional)
+        default: "http://localhost:8080/oauth/callback"
       stateless:
         type: boolean
         description: Use stateless HTTP mode (default false)
@@ -46,8 +55,20 @@ startCommand:
     msTenantId: "your-tenant-id-here"
     msClientId: "your-client-id-here"
     msClientSecret: "your-client-secret-here"
+    msRedirectUri: "http://localhost:8080/oauth/callback"
     stateless: false
     logLevel: "info"
+
+# OAuth configuration for Smithery CLI automatic endpoint mounting
+# @see https://smithery.ai/docs/build/deployments/typescript#oauth
+oauth:
+  enabled: true
+  provider: "azure-ad"
+  endpoints:
+    authorize: "/oauth/authorize"
+    token: "/oauth/token"
+    callback: "/oauth/callback"
+    metadata: "/.well-known/oauth-authorization-server"
 
 # Tool discovery metadata for Smithery
 tools:

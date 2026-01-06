@@ -4,12 +4,15 @@
   "description": "Microsoft 365 Core MCP Server for managing distribution lists, security groups, M365 groups, and Exchange settings",
   "type": "module",
   "main": "build/index.js",
+  "module": "smithery.ts",
   "scripts": {
     "build": "tsc",
+    "build:smithery": "npx smithery build",
     "start": "node build/index.js",
     "start:http": "USE_HTTP=true node build/index.js",
     "start:stdio": "node build/index.js",
     "dev": "ts-node-esm src/index.ts",
+    "dev:smithery": "npx smithery dev",
     "dev:http": "USE_HTTP=true ts-node-esm src/index.ts",
     "dev:stateless": "USE_HTTP=true STATELESS=true ts-node-esm src/index.ts",
     "test:http": "USE_HTTP=true PORT=8080 ts-node-esm src/index.ts",
@@ -21,6 +24,7 @@
     "@azure/msal-node": "^3.8.3",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.24.1",
+    "@smithery/sdk": "^1.0.0",
     "csv-writer": "^1.6.0",
     "express": "^5.2.1",
     "handlebars": "^4.7.8",
@@ -33,6 +37,7 @@
     "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
+    "@smithery/cli": "^1.4.6",
     "@types/express": "^4.17.23",
     "@types/isomorphic-fetch": "^0.0.39",
     "@types/node": "^18.19.112",

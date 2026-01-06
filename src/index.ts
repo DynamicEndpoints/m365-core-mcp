@@ -6,6 +6,13 @@ import express, { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { M365CoreServer } from './server.js';
 
+// Import DNS rebinding protection middleware (MCP SDK best practice)
+import { hostHeaderValidation } from '@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js';
+
+// Import authentication middleware (MCP SDK latest auth features)
+import { mcpAuthMiddleware, optionalAuth, getAuthInfoFromRequest } from './auth/index.js';
+import { getOAuthProvider, resetOAuthProvider } from './auth/index.js';
+
 // Environment validation
 // Default port 8080 for Smithery compatibility
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
@@ -59,6 +66,10 @@ async function startServer() {
     // Setup Express app for HTTP transport
     const app = express();
     
+    // DNS rebinding protection (MCP SDK best practice for security)
+    // Allow localhost variants and container networking
+    app.use(hostHeaderValidation(['localhost', '127.0.0.1', '0.0.0.0', 'host.docker.internal']));
+    
     // CORS configuration for browser-based MCP clients
     app.use((req, res, next) => {
       res.header('Access-Control-Allow-Origin', '*');
@@ -74,6 +85,138 @@ async function startServer() {
     });
     
     app.use(express.json());
+
+    // ============================================
+    // OAuth 2.0 Endpoints (MCP SDK latest auth features)
+    // ============================================
+    
+    // OAuth authorization endpoint - redirect to Azure AD
+    app.get('/oauth/authorize', (req: Request, res: Response) => {
+      const provider = getOAuthProvider();
+      const state = req.query.state as string || randomUUID();
+      const scopes = (req.query.scope as string)?.split(' ');
+      
+      const authUrl = provider.getAuthorizationUrl(state, scopes);
+      res.redirect(authUrl);
+    });
+
+    // OAuth callback endpoint - handle Azure AD response
+    app.get('/oauth/callback', async (req: Request, res: Response) => {
+      try {
+        const code = req.query.code as string;
+        const error = req.query.error as string;
+        const state = req.query.state as string;
+
+        if (error) {
+          // Return error page for OAuth errors
+          res.status(400).send(`
+            <html>
+              <body>
+                <h1>Authorization Failed</h1>
+                <p>Error: ${error}</p>
+                <script>
+                  if (window.opener) {
+                    window.opener.postMessage({ type: 'oauth-error', error: '${error}' }, '*');
+                    window.close();
+                  }
+                </script>
+              </body>
+            </html>
+          `);
+          return;
+        }
+
+        if (!code) {
+          res.status(400).json({ error: 'Missing authorization code' });
+          return;
+        }
+
+        // Exchange code for tokens
+        const provider = getOAuthProvider();
+        const tokens = await provider.exchangeCode(code);
+
+        // Return success page with code for client-side handling
+        res.send(`
+          <html>
+            <body>
+              <h1>Authorization Successful!</h1>
+              <p>You can close this window and return to the app.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ 
+                    type: 'oauth-success', 
+                    code: '${code}',
+                    state: '${state || ''}'
+                  }, '*');
+                  window.close();
+                } else {
+                  // Fallback: store in session for retrieval
+                  sessionStorage.setItem('oauth_code', '${code}');
+                  window.location.href = '/?oauth=success';
+                }
+              </script>
+            </body>
+          </html>
+        `);
+      } catch (error) {
+        console.error('OAuth callback error:', error);
+        res.status(500).json({ 
+          error: 'OAuth callback failed',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    });
+
+    // Token endpoint - for token exchange and refresh
+    app.post('/oauth/token', async (req: Request, res: Response) => {
+      try {
+        const { grant_type, code, refresh_token, code_verifier } = req.body;
+        const provider = getOAuthProvider();
+
+        let tokens;
+        if (grant_type === 'authorization_code' && code) {
+          tokens = await provider.exchangeCode(code, code_verifier);
+        } else if (grant_type === 'refresh_token' && refresh_token) {
+          tokens = await provider.refreshToken(refresh_token);
+        } else {
+          res.status(400).json({ error: 'invalid_grant', error_description: 'Unsupported grant type' });
+          return;
+        }
+
+        res.json(tokens);
+      } catch (error) {
+        console.error('Token endpoint error:', error);
+        res.status(500).json({ 
+          error: 'server_error',
+          error_description: error instanceof Error ? error.message : 'Token exchange failed'
+        });
+      }
+    });
+
+    // OAuth metadata endpoint (RFC 8414 - OAuth Server Metadata)
+    app.get('/.well-known/oauth-authorization-server', (req: Request, res: Response) => {
+      const provider = getOAuthProvider();
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      
+      res.json({
+        issuer: baseUrl,
+        authorization_endpoint: `${baseUrl}/oauth/authorize`,
+        token_endpoint: `${baseUrl}/oauth/token`,
+        token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
+        grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
+        response_types_supported: ['code'],
+        scopes_supported: [
+          'openid', 'profile', 'email', 'offline_access',
+          'User.Read', 'User.ReadWrite.All', 'Group.ReadWrite.All',
+          'Directory.ReadWrite.All', 'Mail.ReadWrite', 'Sites.ReadWrite.All'
+        ],
+        code_challenge_methods_supported: ['S256', 'plain'],
+        service_documentation: 'https://github.com/your-org/m365-core-mcp'
+      });
+    });
+
+    // Apply optional auth middleware to MCP endpoints
+    app.use('/mcp', optionalAuth);
 
     if (STATELESS) {
       // Stateless mode - create a new instance for each request

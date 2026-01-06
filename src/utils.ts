@@ -86,16 +86,37 @@ export function formatErrorResponse(error: any, toolName?: string): {
 }
 
 /**
+ * Extra context passed to tool handlers by MCP SDK
+ * Contains session info, auth info, and notification capabilities
+ */
+export interface ToolHandlerExtra {
+  sessionId?: string;
+  authInfo?: {
+    token?: string;
+    clientId?: string;
+    scopes?: string[];
+    userId?: string;
+    tenantId?: string;
+  };
+  sendNotification?: (notification: unknown) => Promise<void>;
+  signal?: AbortSignal;
+}
+
+/**
  * Wraps a handler function to ensure its response is properly formatted
+ * Supports both old (args only) and new (args, extra) handler signatures
+ * per MCP SDK latest auth features
+ * 
  * @param handler The original handler function
  * @returns A wrapped handler that ensures proper response formatting
  */
 export function wrapToolHandler<T, R>(
-  handler: (args: T) => Promise<{ content: { type: string; text: string; }[]; isError?: boolean }>
-): (args: T) => Promise<R> {
-  return async (args: T): Promise<R> => {
+  handler: (args: T, extra?: ToolHandlerExtra) => Promise<{ content: { type: string; text: string; }[]; isError?: boolean }>
+): (args: T, extra?: ToolHandlerExtra) => Promise<R> {
+  return async (args: T, extra?: ToolHandlerExtra): Promise<R> => {
     try {
-      const result = await handler(args);
+      // Pass extra context to handler (includes authInfo per MCP SDK best practice)
+      const result = await handler(args, extra);
       
       // Validate the response format
       validateMcpResponse(result);
