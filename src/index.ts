@@ -11,9 +11,24 @@ import { mcpAuthMiddleware, optionalAuth, getAuthInfoFromRequest } from './auth/
 import { getOAuthProvider, resetOAuthProvider } from './auth/index.js';
 
 // DNS rebinding protection middleware (MCP SDK best practice for security)
+// In production (Smithery), we trust the reverse proxy to handle host validation
+// For local development, we validate allowed hosts
 function hostHeaderValidation(allowedHosts: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
+    // Skip validation in production environments (Smithery handles this via reverse proxy)
+    if (process.env.NODE_ENV === 'production' || process.env.SMITHERY_DEPLOYMENT === 'true') {
+      next();
+      return;
+    }
+    
     const host = req.headers.host?.split(':')[0]; // Remove port if present
+    
+    // Allow Smithery deployment hosts
+    if (host?.endsWith('.smithery.ai') || host?.endsWith('.smithery.app')) {
+      next();
+      return;
+    }
+    
     if (!host || allowedHosts.includes(host)) {
       next();
     } else {
