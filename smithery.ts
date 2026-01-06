@@ -2,10 +2,15 @@
  * Smithery TypeScript configuration for M365 Core MCP Server
  * https://smithery.ai/docs/build/deployments/typescript
  * 
- * Implements latest MCP SDK and Smithery authentication patterns:
- * - OAuth provider export for automatic endpoint mounting
- * - AuthInfo injection into createServer
- * - Type-safe configuration with Zod
+ * Authentication Methods:
+ * 1. Client Credentials (App-Only) - Uses config values below for application permissions
+ *    - Best for: Automated tasks, background services, admin operations
+ *    - Permissions: Application permissions granted in Azure AD
+ * 
+ * 2. OAuth 2.0 (User-Delegated) - Use the oauth_authorize tool for user context
+ *    - Best for: Operations requiring user consent (OneDrive, SharePoint files)
+ *    - Permissions: Delegated permissions, runs as the signed-in user
+ *    - Flow: Call oauth_authorize tool to get auth URL → user consents → exchange code for token
  */
 
 import { z } from 'zod';
@@ -14,8 +19,8 @@ import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 /**
  * Configuration schema for Smithery
  * 
- * These fields will be displayed as a form in the Smithery UI when users
- * connect to this server. The config values are passed to createServer().
+ * These credentials enable Client Credentials flow (app-only authentication).
+ * For user-delegated operations, use the oauth_authorize tool after connecting.
  */
 export const configSchema = z.object({
   msTenantId: z.string()
@@ -27,6 +32,10 @@ export const configSchema = z.object({
   msClientSecret: z.string()
     .min(1, "Client Secret is required")
     .describe('Client Secret Value - Created in Azure Portal > App Registration > Certificates & secrets'),
+  msRedirectUri: z.string()
+    .optional()
+    .default('http://localhost:3000/auth/callback')
+    .describe('OAuth Redirect URI for user-delegated auth (only needed for oauth_authorize tool)'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error'])
     .optional()
     .default('info')
@@ -401,10 +410,9 @@ export const resources = [
 /**
  * Server factory function for Smithery - MUST be default export
  * 
- * Per MCP SDK and Smithery best practices:
- * - Receives config object with validated configuration
- * - Can optionally receive auth object with AuthInfo
- * - Sets up environment and returns server instance
+ * Supports two authentication methods:
+ * 1. Client Credentials (App-Only) - via config values, works automatically
+ * 2. OAuth 2.0 (User-Delegated) - use oauth_authorize tool for user operations
  */
 export default async function createServer({ 
   config, 
@@ -414,19 +422,25 @@ export default async function createServer({
   auth?: AuthInfo;
 }) {
   // Set environment variables from Smithery config
-  // These are required for Microsoft Graph API authentication
+  // These enable Client Credentials flow (app-only authentication)
   process.env.MS_TENANT_ID = config.msTenantId;
   process.env.MS_CLIENT_ID = config.msClientId;
   process.env.MS_CLIENT_SECRET = config.msClientSecret;
+  
+  // Set redirect URI for OAuth user-delegated flows (used by oauth_authorize tool)
+  if (config.msRedirectUri) {
+    process.env.MS_REDIRECT_URI = config.msRedirectUri;
+  }
   
   // Optional settings
   if (config.logLevel) process.env.LOG_LEVEL = config.logLevel;
 
   console.log(`M365 Core MCP Server starting with Tenant: ${config.msTenantId.substring(0, 8)}...`);
+  console.log('Auth modes: Client Credentials (app-only) + OAuth 2.0 (via oauth_authorize tool)');
 
   // Log auth info if provided (useful for debugging)
   if (auth) {
-    console.log(`Authenticated user: ${auth.clientId || 'unknown'}`);
+    console.log(`Smithery AuthInfo - clientId: ${auth.clientId || 'unknown'}`);
   }
 
   // Dynamic import at runtime to avoid compilation issues
@@ -438,6 +452,6 @@ export default async function createServer({
   return server.server;
 }
 
-// Note: OAuth provider export removed for Smithery TypeScript runtime
+// Note: OAuth provider export not used - user-delegated auth is handled by oauth_authorize tool
 // The server uses client credentials flow (app-only auth) via the config values
 // User-delegated OAuth is only needed for local HTTP server mode
