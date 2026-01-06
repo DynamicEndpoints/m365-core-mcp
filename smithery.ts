@@ -438,14 +438,6 @@ export default async function createServer({
   return server.server;
 }
 
-/**
- * OAuth Provider Export for Smithery CLI
- * 
- * When exported, Smithery CLI automatically mounts OAuth endpoints:
- * - GET /oauth/authorize - Redirect to authorization
- * - POST /oauth/token - Token exchange
- * - GET /.well-known/oauth-authorization-server - Metadata
- * 
- * @see https://smithery.ai/docs/build/deployments/typescript
- */
-export { M365OAuthProvider as oauth } from './src/auth/oauth-provider.js';
+// Note: OAuth provider export removed for Smithery TypeScript runtime
+// The server uses client credentials flow (app-only auth) via the config values
+// User-delegated OAuth is only needed for local HTTP server mode
