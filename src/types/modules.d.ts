@@ -12,7 +12,18 @@ declare module 'csv-writer' {
     stringifyRecords(records: any[]): string;
   }
   
+  interface ObjectCsvWriterParams {
+    path: string;
+    header: Array<{ id: string; title: string }>;
+    append?: boolean;
+  }
+  
+  interface CsvWriter {
+    writeRecords(records: any[]): Promise<void>;
+  }
+  
   export function createObjectCsvStringifier(params: ObjectCsvStringifierParams): CsvStringifier;
+  export function createObjectCsvWriter(params: ObjectCsvWriterParams): CsvWriter;
 }
 
 declare module 'xlsx' {
