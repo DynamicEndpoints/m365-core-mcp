@@ -34,7 +34,7 @@
     "puppeteer": "^23.8.0",
     "xlsx": "^0.18.5",
     "zod": "^4.0.0",
-    "zod-to-json-schema": "^4.0.0"
+    "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
     "@smithery/cli": "^1.6.7",
