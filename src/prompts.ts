@@ -1,5 +1,6 @@
 import { Client } from '@microsoft/microsoft-graph-client';
 import { intunePolicyPrompts } from './prompts-intune-policy-guide.js';
+import { identitySecurityPrompts } from './prompts-identity-security.js';
 
 /**
  * MCP Prompts for Microsoft 365
@@ -1460,8 +1461,8 @@ export function getPromptByName(name: string): PromptHandler | undefined {
  * List all available prompts
  */
 export function listPrompts(): Array<{ name: string; description: string; arguments?: Array<{ name: string; description: string; required: boolean }> }> {
-  // Combine all prompts (general M365 + Intune-specific)
-  const allPrompts = [...m365Prompts, ...intunePolicyPrompts];
+  // Combine all prompts (general M365 + Intune-specific + Identity Security)
+  const allPrompts = [...m365Prompts, ...intunePolicyPrompts, ...identitySecurityPrompts];
   
   return allPrompts.map(p => ({
     name: p.name,
@@ -1473,4 +1474,4 @@ export function listPrompts(): Array<{ name: string; description: string; argume
 /**
  * Export combined prompts for server registration
  */
-export const allM365Prompts = [...m365Prompts, ...intunePolicyPrompts];
+export const allM365Prompts = [...m365Prompts, ...intunePolicyPrompts, ...identitySecurityPrompts];

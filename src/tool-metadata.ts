@@ -237,6 +237,31 @@ export const toolMetadata: Record<string, ToolMetadata> = {
     title: "Conditional Access Policy Manager",
     annotations: { title: "Conditional Access Policy Manager", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }
   },
+  backup_policies: {
+    description: "Export Microsoft 365 policies to JSON format for backup, disaster recovery, and migration. Supports Conditional Access, Named Locations, Authentication Strengths, Intune policies, and more.",
+    title: "Policy Backup Tool",
+    annotations: { title: "Policy Backup Tool", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  },
+  manage_named_locations: {
+    description: "Manage Conditional Access named locations including IP address ranges and country/region locations for location-based access control.",
+    title: "Named Locations Manager",
+    annotations: { title: "Named Locations Manager", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }
+  },
+  manage_authentication_strengths: {
+    description: "View and manage authentication strength policies that define which authentication methods satisfy MFA requirements in Conditional Access.",
+    title: "Authentication Strength Manager",
+    annotations: { title: "Authentication Strength Manager", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  },
+  manage_cross_tenant_access: {
+    description: "Manage cross-tenant access settings for B2B collaboration, including inbound/outbound trust settings and partner configurations.",
+    title: "Cross-Tenant Access Manager",
+    annotations: { title: "Cross-Tenant Access Manager", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }
+  },
+  manage_identity_protection: {
+    description: "Monitor and manage Azure AD Identity Protection including risk detections, risky users, and risk remediation actions.",
+    title: "Identity Protection Manager",
+    annotations: { title: "Identity Protection Manager", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }
+  },
   manage_information_protection_policies: {
     description: "Manage Azure Information Protection policies for data classification, encryption, and rights management.",
     title: "Information Protection Policy Manager",

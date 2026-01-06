@@ -199,6 +199,27 @@ import {
   handleSecurityAlertPolicies
 } from './handlers/security-policy-handlers.js';
 
+// Import new identity and security handlers
+import { handlePolicyBackup } from './handlers/policy-backup-handler.js';
+import {
+  handleNamedLocations,
+  handleAuthenticationStrength,
+  handleCrossTenantAccess,
+  handleIdentityProtection
+} from './handlers/identity-security-handler.js';
+import {
+  policyBackupArgsSchema,
+  namedLocationsArgsSchema,
+  authenticationStrengthArgsSchema,
+  crossTenantAccessArgsSchema,
+  identityProtectionArgsSchema,
+  PolicyBackupArgs,
+  NamedLocationsArgs,
+  AuthenticationStrengthArgs,
+  CrossTenantAccessArgs,
+  IdentityProtectionArgs
+} from './schemas/identity-security-schemas.js';
+
 // Import document generation handlers and types
 import { handlePowerPointPresentations } from './handlers/powerpoint-handler.js';
 import { handleWordDocuments } from './handlers/word-document-handler.js';
@@ -1137,6 +1158,116 @@ export class M365CoreServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Policy Backup/Export Tool - Export policies to JSON for backup and disaster recovery
+    this.server.tool(
+      "backup_policies",
+      "Export Microsoft 365 policies to JSON format for backup, disaster recovery, and migration. Supports Conditional Access, Named Locations, Authentication Strengths, Intune policies, and more.",
+      policyBackupArgsSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
+      wrapToolHandler(async (args: PolicyBackupArgs) => {
+        this.validateCredentials();
+        try {
+          return await handlePolicyBackup(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error backing up policies: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Named Locations Management - Manage IP ranges and country locations for Conditional Access
+    this.server.tool(
+      "manage_named_locations",
+      "Manage Conditional Access named locations including IP address ranges and country/region locations for location-based access control.",
+      namedLocationsArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: NamedLocationsArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleNamedLocations(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error managing named locations: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Authentication Strength Management - Manage MFA requirements
+    this.server.tool(
+      "manage_authentication_strengths",
+      "View and manage authentication strength policies that define which authentication methods satisfy MFA requirements in Conditional Access.",
+      authenticationStrengthArgsSchema.shape,
+      {"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true},
+      wrapToolHandler(async (args: AuthenticationStrengthArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleAuthenticationStrength(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error managing authentication strengths: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Cross-Tenant Access Settings - Manage B2B collaboration settings
+    this.server.tool(
+      "manage_cross_tenant_access",
+      "Manage cross-tenant access settings for B2B collaboration, including inbound/outbound trust settings and partner configurations.",
+      crossTenantAccessArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: CrossTenantAccessArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleCrossTenantAccess(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error managing cross-tenant access: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      })
+    );
+
+    // Identity Protection - Risk detections and risky users
+    this.server.tool(
+      "manage_identity_protection",
+      "Monitor and manage Azure AD Identity Protection including risk detections, risky users, and risk remediation actions.",
+      identityProtectionArgsSchema.shape,
+      {"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false},
+      wrapToolHandler(async (args: IdentityProtectionArgs) => {
+        this.validateCredentials();
+        try {
+          return await handleIdentityProtection(this.getGraphClient(), args);
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error managing identity protection: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       })

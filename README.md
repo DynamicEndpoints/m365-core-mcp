@@ -1,5 +1,28 @@
 ## Latest Enhancements (January 2026)
 
+**New Identity & Security Tools:**
+- **`backup_policies`** - Export Microsoft 365 policies to JSON for backup, disaster recovery, and migration
+  - Conditional Access Policies, Named Locations, Authentication Strengths
+  - Intune Device Compliance & Configuration Policies
+  - App Protection Policies, Sensitivity Labels
+  - Full JSON backup with metadata and tenant information
+- **`manage_named_locations`** - Manage Conditional Access named locations
+  - IP address ranges (CIDR notation) with trust settings
+  - Country/region-based locations (ISO 3166-1 alpha-2 codes)
+  - Create, update, delete, and list operations
+- **`manage_authentication_strengths`** - View authentication strength policies
+  - Built-in and custom MFA strength policies
+  - Available authentication method combinations
+  - Authentication method configurations
+- **`manage_cross_tenant_access`** - Manage B2B collaboration settings
+  - Default and partner-specific access policies
+  - Inbound trust settings (MFA, compliant devices, hybrid joined)
+  - B2B collaboration inbound/outbound controls
+- **`manage_identity_protection`** - Monitor identity risks
+  - Risk detections and risky users
+  - Dismiss or confirm compromised users
+  - Filter by risk level and state
+
 **MCP SDK & Smithery Best Practices Update:**
 - **Upgraded to Zod v4** for schema validation (required by @smithery/sdk@3.0.1)
 - **Added OAuth 2.0 authentication infrastructure** with Azure AD/Microsoft Entra ID integration
