@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import { M365CoreServer } from './src/server.js';
 
 /**
  * Configuration schema for Smithery
@@ -439,12 +440,8 @@ export default async function createServer({
     console.log(`Smithery AuthInfo - clientId: ${auth.clientId || 'unknown'}`);
   }
 
-  // Dynamic import at runtime to avoid compilation issues
-  const module = await import('./src/server.js');
-  const { M365CoreServer } = module;
+  // Create and return the MCP server
   const server = new M365CoreServer();
-  
-  // Return the underlying server for Smithery
   return server.server;
 }
 
