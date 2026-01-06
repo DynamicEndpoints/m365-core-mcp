@@ -10,5 +10,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "build", "smithery.ts"]
+  "exclude": ["node_modules", "build", "smithery.ts", "src/tool-definitions-broken.ts", "src/server.ts.backup"]
 }

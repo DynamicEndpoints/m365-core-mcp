@@ -2,16 +2,25 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
 import { M365CoreServer } from './server.js';
-
-// Import DNS rebinding protection middleware (MCP SDK best practice)
-import { hostHeaderValidation } from '@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js';
 
 // Import authentication middleware (MCP SDK latest auth features)
 import { mcpAuthMiddleware, optionalAuth, getAuthInfoFromRequest } from './auth/index.js';
 import { getOAuthProvider, resetOAuthProvider } from './auth/index.js';
+
+// DNS rebinding protection middleware (MCP SDK best practice for security)
+function hostHeaderValidation(allowedHosts: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const host = req.headers.host?.split(':')[0]; // Remove port if present
+    if (!host || allowedHosts.includes(host)) {
+      next();
+    } else {
+      res.status(403).json({ error: 'Forbidden: Invalid host header' });
+    }
+  };
+}
 
 // Environment validation
 // Default port 8080 for Smithery compatibility
@@ -71,7 +80,7 @@ async function startServer() {
     app.use(hostHeaderValidation(['localhost', '127.0.0.1', '0.0.0.0', 'host.docker.internal']));
     
     // CORS configuration for browser-based MCP clients
-    app.use((req, res, next) => {
+    app.use((req: Request, res: Response, next: NextFunction) => {
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version');
