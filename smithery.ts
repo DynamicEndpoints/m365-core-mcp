@@ -1,6 +1,6 @@
 /**
  * Smithery TypeScript configuration for M365 Core MCP Server
- * https://smithery.ai/docs/build/deployments#typescript-deploy
+ * https://smithery.ai/docs/build/deployments/typescript
  * 
  * Implements latest MCP SDK and Smithery authentication patterns:
  * - OAuth provider export for automatic endpoint mounting
@@ -11,15 +11,26 @@
 import { z } from 'zod';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 
-// Configuration schema for Smithery
+/**
+ * Configuration schema for Smithery
+ * 
+ * These fields will be displayed as a form in the Smithery UI when users
+ * connect to this server. The config values are passed to createServer().
+ */
 export const configSchema = z.object({
-  msTenantId: z.string().describe('Microsoft Tenant ID for authentication'),
-  msClientId: z.string().describe('Microsoft Client ID for authentication'),
-  msClientSecret: z.string().describe('Microsoft Client Secret for authentication'),
-  useHttp: z.boolean().optional().describe('Use HTTP transport instead of stdio (default true for Smithery)'),
-  stateless: z.boolean().optional().describe('Use stateless HTTP mode (default false)'),
-  port: z.number().optional().describe('Port for HTTP server (default 8080)'),
-  logLevel: z.enum(['debug', 'info', 'warn', 'error']).optional().describe('Log level (default info)')
+  msTenantId: z.string()
+    .min(1, "Tenant ID is required")
+    .describe('Microsoft Entra ID (Azure AD) Tenant ID - Found in Azure Portal > Entra ID > Overview'),
+  msClientId: z.string()
+    .min(1, "Client ID is required")
+    .describe('Application (Client) ID - Found in Azure Portal > App Registration > Overview'),
+  msClientSecret: z.string()
+    .min(1, "Client Secret is required")
+    .describe('Client Secret Value - Created in Azure Portal > App Registration > Certificates & secrets'),
+  logLevel: z.enum(['debug', 'info', 'warn', 'error'])
+    .optional()
+    .default('info')
+    .describe('Log verbosity level (default: info)')
 });
 
 // Tool definitions for Smithery discovery
@@ -403,13 +414,15 @@ export default async function createServer({
   auth?: AuthInfo;
 }) {
   // Set environment variables from Smithery config
-  if (config.msTenantId) process.env.MS_TENANT_ID = config.msTenantId;
-  if (config.msClientId) process.env.MS_CLIENT_ID = config.msClientId;
-  if (config.msClientSecret) process.env.MS_CLIENT_SECRET = config.msClientSecret;
-  if (config.useHttp !== undefined) process.env.USE_HTTP = config.useHttp.toString();
-  if (config.stateless !== undefined) process.env.STATELESS = config.stateless.toString();
-  if (config.port) process.env.PORT = config.port.toString();
+  // These are required for Microsoft Graph API authentication
+  process.env.MS_TENANT_ID = config.msTenantId;
+  process.env.MS_CLIENT_ID = config.msClientId;
+  process.env.MS_CLIENT_SECRET = config.msClientSecret;
+  
+  // Optional settings
   if (config.logLevel) process.env.LOG_LEVEL = config.logLevel;
+
+  console.log(`M365 Core MCP Server starting with Tenant: ${config.msTenantId.substring(0, 8)}...`);
 
   // Log auth info if provided (useful for debugging)
   if (auth) {

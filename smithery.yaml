@@ -1,63 +1,9 @@
-# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Smithery configuration file: https://smithery.ai/docs/config
 # Updated with MCP SDK and Smithery latest authentication best practices
 
-# Use container runtime for HTTP transport
-runtime: "container"
-build:
-  dockerfile: "Dockerfile"
-  dockerBuildPath: "."
-
-# Environment variables for the container
-env:
-  NODE_ENV: "production"
-  USE_HTTP: "true"
-  PORT: "8080"
-
-startCommand:
-  type: "http"
-  configSchema:
-    type: object
-    required:
-      - msTenantId
-      - msClientId
-      - msClientSecret
-    properties:
-      msTenantId:
-        type: string
-        title: "Microsoft Tenant ID"
-        description: Microsoft Entra ID (Azure AD) tenant ID for authentication
-        format: uuid
-      msClientId:
-        type: string
-        title: "Microsoft Client ID"
-        description: Microsoft Entra ID application (client) ID
-        format: uuid
-      msClientSecret:
-        type: string
-        title: "Microsoft Client Secret"
-        description: Microsoft Entra ID application client secret (keep secure!)
-        writeOnly: true
-      msRedirectUri:
-        type: string
-        title: "OAuth Redirect URI"
-        description: OAuth 2.0 redirect URI for user consent flow (optional)
-        default: "http://localhost:8080/oauth/callback"
-      stateless:
-        type: boolean
-        description: Use stateless HTTP mode (default false)
-        default: false
-      logLevel:
-        type: string
-        enum: ["debug", "info", "warn", "error"]
-        description: Log level (default info)
-        default: "info"
-  exampleConfig:
-    msTenantId: "your-tenant-id-here"
-    msClientId: "your-client-id-here"
-    msClientSecret: "your-client-secret-here"
-    msRedirectUri: "http://localhost:8080/oauth/callback"
-    stateless: false
-    logLevel: "info"
+# Use TypeScript runtime - Smithery CLI handles build and deployment
+# The configSchema is automatically read from the exported configSchema in smithery.ts
+runtime: "typescript"
 
 # OAuth configuration for Smithery CLI automatic endpoint mounting
 # @see https://smithery.ai/docs/build/deployments/typescript#oauth
