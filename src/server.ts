@@ -1828,8 +1828,22 @@ async function main() {
   }
 }
 
-// ES Module check - only run main if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Only run main when executed directly (not when imported)
+// Use a try-catch to handle both ESM and CJS environments
+const isMainModule = (() => {
+  try {
+    // ESM check
+    if (typeof import.meta !== 'undefined' && import.meta.url) {
+      return import.meta.url === `file://${process.argv[1]}`;
+    }
+  } catch {
+    // import.meta not available
+  }
+  // In bundled/CJS environments, don't auto-run
+  return false;
+})();
+
+if (isMainModule) {
   main().catch(error => {
     console.error('Unhandled error:', error);
     process.exit(1);
