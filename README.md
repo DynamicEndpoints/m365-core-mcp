@@ -1,4 +1,32 @@
-## Latest Enhancements (December 2024)
+## Latest Enhancements (January 2026)
+
+**MCP SDK & Smithery Best Practices Update:**
+- **Upgraded to Zod v4** for schema validation (required by @smithery/sdk@3.0.1)
+- **Added OAuth 2.0 authentication infrastructure** with Azure AD/Microsoft Entra ID integration
+- **Implemented DNS rebinding protection** for HTTP transport security
+- **Added Smithery SDK integration** with proper module exports and configuration
+
+**Authentication Improvements:**
+- New `src/auth/` module with OAuth provider and middleware
+- Bearer token extraction and validation
+- Support for both OAuth and API key authentication
+- Token caching and automatic refresh
+- OAuth endpoints (`/oauth/authorize`, `/oauth/callback`, `/oauth/token`)
+
+**Build & Deployment Fixes:**
+- Fixed TypeScript compilation errors for Smithery deployment
+- Added type declarations for `csv-writer`, `xlsx`, `handlebars` modules
+- Excluded broken/backup files from TypeScript compilation
+- Updated `@types/express` to v5.0.0 for Express v5 compatibility
+- Fixed host header validation for production deployments
+
+**Configuration Updates:**
+- Added `smithery.config.js` for esbuild configuration
+- Updated `smithery.yaml` with OAuth config section
+- Added `module` field to `package.json` for Smithery compatibility
+- Updated dependencies: `@smithery/sdk@^3.0.1`, `@smithery/cli@^1.6.7`
+
+## Previous Enhancements (December 2024)
 
 **Comprehensive Microsoft 365 Policy Management Expansion:**
 - **Added 10 new policy management tools** covering all major Microsoft 365 products and services
