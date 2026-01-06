@@ -34,11 +34,9 @@ export const configSchema = z.object({
     .describe('Client Secret Value - Created in Azure Portal > App Registration > Certificates & secrets'),
   msRedirectUri: z.string()
     .optional()
-    .default('http://localhost:3000/auth/callback')
-    .describe('OAuth Redirect URI for user-delegated auth (only needed for oauth_authorize tool)'),
+    .describe('OAuth Redirect URI for user-delegated auth (default: http://localhost:3000/auth/callback)'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error'])
     .optional()
-    .default('info')
     .describe('Log verbosity level (default: info)')
 });
 
@@ -427,13 +425,11 @@ export default async function createServer({
   process.env.MS_CLIENT_ID = config.msClientId;
   process.env.MS_CLIENT_SECRET = config.msClientSecret;
   
-  // Set redirect URI for OAuth user-delegated flows (used by oauth_authorize tool)
-  if (config.msRedirectUri) {
-    process.env.MS_REDIRECT_URI = config.msRedirectUri;
-  }
+  // Set redirect URI for OAuth user-delegated flows (with default)
+  process.env.MS_REDIRECT_URI = config.msRedirectUri || 'http://localhost:3000/auth/callback';
   
-  // Optional settings
-  if (config.logLevel) process.env.LOG_LEVEL = config.logLevel;
+  // Log level with default
+  process.env.LOG_LEVEL = config.logLevel || 'info';
 
   console.log(`M365 Core MCP Server starting with Tenant: ${config.msTenantId.substring(0, 8)}...`);
   console.log('Auth modes: Client Credentials (app-only) + OAuth 2.0 (via oauth_authorize tool)');
